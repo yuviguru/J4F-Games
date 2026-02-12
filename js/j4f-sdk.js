@@ -17,6 +17,11 @@ const J4F = (() => {
   const db = firebase.database();
   const auth = firebase.auth();
 
+  // Handle redirect result from signInWithRedirect (fires on page reload after redirect)
+  auth.getRedirectResult().catch((e) => {
+    console.error("Redirect sign-in failed:", e);
+  });
+
   // ─── CODE GENERATION ───
   function genCode() {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ2345789";
@@ -50,12 +55,24 @@ const J4F = (() => {
     // Sign in with Google
     async login() {
       const provider = new firebase.auth.GoogleAuthProvider();
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      // Use redirect on mobile — popups are unreliable (blocked by browsers, third-party cookie issues)
+      if (isMobile) {
+        await auth.signInWithRedirect(provider);
+        return null; // will reload
+      }
+
       try {
         const result = await auth.signInWithPopup(provider);
         return authModule.getUser();
       } catch (e) {
-        // On mobile, popup might fail — try redirect
-        if (e.code === "auth/popup-blocked" || e.code === "auth/popup-closed-by-user") {
+        // Popup blocked or closed — fall back to redirect
+        if (
+          e.code === "auth/popup-blocked" ||
+          e.code === "auth/popup-closed-by-user" ||
+          e.code === "auth/cancelled-popup-request"
+        ) {
           await auth.signInWithRedirect(provider);
           return null; // will reload
         }
