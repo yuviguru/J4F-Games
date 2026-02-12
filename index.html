@@ -447,6 +447,15 @@
         await J4F.auth.login();
       } catch (e) {
         console.error('Login failed:', e);
+        if (e.code === 'auth/unauthorized-domain') {
+          alert('This domain is not authorized for sign-in. Please check Firebase Console > Authentication > Settings > Authorized domains.');
+        } else if (e.code === 'auth/operation-not-allowed') {
+          alert('Google sign-in is not enabled. Please enable it in Firebase Console > Authentication > Sign-in method.');
+        } else if (e.code === 'auth/network-request-failed') {
+          alert('Network error. Please check your connection and try again.');
+        } else if (e.code !== 'auth/popup-closed-by-user') {
+          alert('Sign-in failed. Please try again.');
+        }
       }
     }
 
