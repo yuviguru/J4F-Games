@@ -99,6 +99,7 @@ const J4F = (() => {
   // ─── ROOM MODULE ───
   let currentRoom = null;
   let roomListener = null;
+  let presenceRef = null;
 
   const roomModule = {
     // Create a new room
@@ -118,11 +119,16 @@ const J4F = (() => {
         moveId: 0,
         lastMove: null,
         status: "waiting", // waiting | playing | finished
+        presence: {
+          host: { online: true, lastSeen: firebase.database.ServerValue.TIMESTAMP, disconnectedAt: null },
+          guest: { online: false, lastSeen: null, disconnectedAt: null },
+        },
         createdAt: firebase.database.ServerValue.TIMESTAMP,
       };
 
       await roomRef.set(roomData);
       currentRoom = { ref: roomRef, code, player: 0 };
+      roomModule._bindPresence();
       return { code, roomData };
     },
 
@@ -140,9 +146,15 @@ const J4F = (() => {
         guest: user ? user.uid : "anonymous",
         guestName: user ? user.name : "Player 2",
         status: "playing",
+        "presence/guest": {
+          online: true,
+          lastSeen: firebase.database.ServerValue.TIMESTAMP,
+          disconnectedAt: null,
+        },
       });
 
       currentRoom = { ref: roomRef, code, player: 1 };
+      roomModule._bindPresence();
       return { code, roomData: { ...data, guest: user?.uid, status: "playing" } };
     },
 
@@ -191,11 +203,41 @@ const J4F = (() => {
 
     // Leave room
     async leave() {
+      await roomModule.markOffline();
       if (roomListener && currentRoom) {
         currentRoom.ref.off("value", roomListener);
         roomListener = null;
       }
+      if (presenceRef) {
+        presenceRef.onDisconnect().cancel();
+        presenceRef = null;
+      }
       currentRoom = null;
+    },
+
+    _bindPresence() {
+      if (!currentRoom) return;
+      const key = currentRoom.player === 0 ? "host" : "guest";
+      presenceRef = currentRoom.ref.child("presence/" + key);
+      presenceRef.set({
+        online: true,
+        lastSeen: firebase.database.ServerValue.TIMESTAMP,
+        disconnectedAt: null,
+      }).catch(() => {});
+      presenceRef.onDisconnect().set({
+        online: false,
+        lastSeen: firebase.database.ServerValue.TIMESTAMP,
+        disconnectedAt: firebase.database.ServerValue.TIMESTAMP,
+      });
+    },
+
+    async markOffline() {
+      if (!presenceRef) return;
+      await presenceRef.set({
+        online: false,
+        lastSeen: firebase.database.ServerValue.TIMESTAMP,
+        disconnectedAt: firebase.database.ServerValue.TIMESTAMP,
+      });
     },
 
     // Get current room info

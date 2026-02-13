@@ -105,7 +105,7 @@ const SEEDS = [
   {id:"pebbles",name:"River Pebbles",tamil:"ஆற்றுக் கல்",emoji:"🪨",colors:["#808080","#696969","#A9A9A9","#778899"],stroke:"#4A4A4A",snd:{f:3200,d:.05,g:.3}},
   {id:"marbles",name:"Glass Marbles",tamil:"கோலி குண்டு",emoji:"🔮",colors:["#4169E1","#32CD32","#FF6347","#FFD700"],stroke:"#FFFFFF55",snd:{f:4200,d:.15,g:.2}},
 ];
-const TURN_TIME=10, PITS=14, SPP=6, TOTAL=PITS*SPP;
+const TURN_TIME=10, FORFEIT_TIMEOUT=20, PITS=14, SPP=6, TOTAL=PITS*SPP;
 const initBoard=()=>Array(PITS).fill(SPP);
 const next=p=>(p+1)%PITS;
 
@@ -117,11 +117,12 @@ const S={
   timeLeft:TURN_TIME, timedOut:false, aiThink:false,
   // online
   roomCode:"", joinCode:"", myPlayer:0, isOnline:false, opJoined:false, onlineErr:"",
+  leavePrompt:false, waitingReconnect:false, reconnectLeft:FORFEIT_TIMEOUT, reconnectWinner:null,
   showRules:false, inviteMsg:"",
   // matchmaking
   searching:false, searchMsg:"",
 };
-let ac=null, timerIv=null, autoTo=null, seenMoveId=0, cancelMatchmake=null;
+let ac=null, timerIv=null, autoTo=null, seenMoveId=0, cancelMatchmake=null, reconnectIv=null;
 
 function ea(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();if(ac.state==="suspended")ac.resume();return ac;}
 
@@ -150,8 +151,27 @@ function startTimer(){
   },1000);
 }
 function stopTimer(){if(timerIv){clearInterval(timerIv);timerIv=null}if(autoTo){clearTimeout(autoTo);autoTo=null}}
+function stopReconnectTimer(){if(reconnectIv){clearInterval(reconnectIv);reconnectIv=null}}
+function clearReconnectWait(){stopReconnectTimer();S.waitingReconnect=false;S.reconnectLeft=FORFEIT_TIMEOUT;S.reconnectWinner=null;}
+function startReconnectTimer(winner){
+  if(S.gameOver||S.waitingReconnect)return;
+  S.waitingReconnect=true;S.reconnectWinner=winner;S.reconnectLeft=FORFEIT_TIMEOUT;
+  stopTimer();
+  stopReconnectTimer();
+  reconnectIv=setInterval(()=>{
+    S.reconnectLeft--;
+    if(S.reconnectLeft<=0){
+      stopReconnectTimer();
+      S.waitingReconnect=false;
+      S.gameOver=true;
+      S.winner=winner;
+      J4F.room.finish(winner).catch(()=>{});
+    }
+    render();
+  },1000);
+}
 function autoMove(){
-  if(S.anim||S.gameOver)return;
+  if(S.anim||S.gameOver||S.waitingReconnect)return;
   const s=S.cp===0?0:7,e=S.cp===0?7:14,v=[];
   for(let i=s;i<e;i++)if(S.board[i]>0)v.push(i);
   if(v.length>0)doMove(v[Math.floor(Math.random()*v.length)]);
@@ -159,7 +179,8 @@ function autoMove(){
 
 /* ═══════ MOVE ENGINE ═══════ */
 async function doMove(pit){
-  if(S.anim)return;
+  if(S.anim||S.waitingReconnect)return;
+  clearReconnectWait();
   S.anim=true; stopTimer(); ea();
   const steps=compSteps(S.board,pit);
   const mover=S.cp;
@@ -198,7 +219,7 @@ async function doMove(pit){
 
   // Send move to Firebase only if this is OUR move (not a replay of opponent's move)
   if(S.isOnline&&mover===S.myPlayer){
-    J4F.room.sendMoveAndState({pit,mover},{board:S.board,scores:S.scores,cp:S.cp,gameOver:S.gameOver,winner:S.winner}).catch(()=>{});
+    J4F.room.sendMoveAndState({pit,mover},{board:S.board,scores:S.scores,cp:S.cp,gameOver:S.gameOver,winner:S.winner,waitingReconnect:false,reconnectWinner:null}).catch(()=>{});
   }
 
   render();
@@ -217,7 +238,7 @@ function scheduleAI(){
 }
 
 function handlePit(pit){
-  if(S.anim||S.gameOver)return;
+  if(S.anim||S.gameOver||S.waitingReconnect)return;
   if(S.cp===0&&pit>6)return;
   if(S.cp===1&&pit<7)return;
   if(S.board[pit]===0)return;
@@ -303,12 +324,32 @@ function cancelSearch(){
 }
 
 // Listeners
+function handlePresenceUpdate(data){
+  if(!S.isOnline||S.gameOver||!S.opJoined||S.screen!=="game")return;
+  const me=S.myPlayer===0?"host":"guest";
+  const opp=S.myPlayer===0?"guest":"host";
+  const meOnline=Boolean(data?.presence?.[me]?.online);
+  const oppOnline=Boolean(data?.presence?.[opp]?.online);
+  if(!meOnline)return;
+  if(!oppOnline){
+    startReconnectTimer(S.myPlayer);
+  }else if(S.waitingReconnect){
+    clearReconnectWait();
+  }
+}
+
 function setupHostListener(){
   J4F.room.onUpdate(data=>{
     if(!S.opJoined&&data.guest&&data.status==="playing"){
       S.opJoined=true;S.gameMode="online";S.screen="game";render();startTimer();
       return;
     }
+    if(data.status==="finished"&&typeof data.winner==="number"&&!S.gameOver){
+      clearReconnectWait();
+      S.gameOver=true;S.winner=data.winner;stopTimer();render();
+      return;
+    }
+    handlePresenceUpdate(data);
     if(data.moveId>seenMoveId&&!S.anim&&data.lastMove){
       const mv=data.lastMove;
       if(mv.mover!==S.myPlayer){seenMoveId=data.moveId;doMove(mv.pit)}
@@ -319,6 +360,12 @@ function setupHostListener(){
 
 function setupGuestListener(){
   J4F.room.onUpdate(data=>{
+    if(data.status==="finished"&&typeof data.winner==="number"&&!S.gameOver){
+      clearReconnectWait();
+      S.gameOver=true;S.winner=data.winner;stopTimer();render();
+      return;
+    }
+    handlePresenceUpdate(data);
     if(data.moveId>seenMoveId&&!S.anim&&data.lastMove){
       const mv=data.lastMove;
       if(mv.mover!==S.myPlayer){seenMoveId=data.moveId;doMove(mv.pit)}
@@ -329,9 +376,9 @@ function setupGuestListener(){
 
 /* ═══════ RESET ═══════ */
 function resetGame(){
-  stopTimer();J4F.room.leave().catch(()=>{});
+  stopTimer();stopReconnectTimer();J4F.room.leave().catch(()=>{});
   if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
-  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",inviteMsg:"",searching:false,searchMsg:""});
+  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",leavePrompt:false,waitingReconnect:false,reconnectLeft:FORFEIT_TIMEOUT,reconnectWinner:null,inviteMsg:"",searching:false,searchMsg:""});
   seenMoveId=0;
 }
 
@@ -511,7 +558,7 @@ function renderGame(){
   const botP=flipped?1:0, topP=flipped?0:1;
   const botLbl=isOn||isAI?"You":"P1", topLbl=isOn?"Opponent":isAI?"AI":"P2";
   const myTurn=isOn?S.cp===S.myPlayer:(isAI?S.cp===0:true);
-  const showTimer=!S.anim&&!S.gameOver&&myTurn&&!(isAI&&S.cp===1);
+  const showTimer=!S.anim&&!S.gameOver&&!S.waitingReconnect&&myTurn&&!(isAI&&S.cp===1);
 
   let turnText="";
   if(S.gameOver){
@@ -569,6 +616,7 @@ function renderGame(){
   <!-- Status -->
   <div class="status-bar">
     ${S.timedOut?'<span style="color:#ff8c00;font-size:11px;font-weight:700">⏱️ Time\'s up!</span>':""}
+    ${S.waitingReconnect?`<span style="color:#ff8c00;font-size:11px;font-weight:700">⚠️ Opponent disconnected · win in ${S.reconnectLeft}s</span>`:""}
     ${S.holding>0?`<div class="holding-badge">🤏 <strong>${S.holding}</strong> ${seedDots(st,Math.min(S.holding,4),6)}${S.holding>4?`<span style="font-size:8px">+${S.holding-4}</span>`:""}</div>`:""}
   </div>
 
@@ -595,12 +643,20 @@ function renderGame(){
   <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center">
     ${S.gameOver?`<button class="btn-primary" onclick="resetGame();S.seedType=SEEDS[${SEEDS.indexOf(st)}];${isOn?"S.screen='mode'":"S.screen='game';S.gameMode='"+S.gameMode+"';S.aiDiff='"+S.aiDiff+"'"};render();${isOn?"":"startTimer()"}">New Game</button>`:""}
     <button class="btn" onclick="S.showRules=!S.showRules;render()">${S.showRules?"Hide":"Rules"}</button>
-    <button class="btn" onclick="resetGame();S.seedType=SEEDS[${SEEDS.indexOf(st)}];S.screen='mode';render()">Mode</button>
+    ${!isOn?`<button class="btn" onclick="resetGame();S.seedType=SEEDS[${SEEDS.indexOf(st)}];S.screen='mode';render()">Mode</button>`:`<button class="btn" onclick="S.leavePrompt=true;render()">Leave Match</button>`}
     ${!isOn?`<button class="btn" onclick="resetGame();S.screen='select';render()">${st.emoji} Seeds</button>`:""}
     ${!S.gameOver&&!isOn?`<button class="btn" onclick="resetGame();S.seedType=SEEDS[${SEEDS.indexOf(st)}];S.gameMode='${S.gameMode}';S.aiDiff='${S.aiDiff}';S.screen='game';render();startTimer()">Restart</button>`:""}
   </div>
 
   <!-- Rules -->
+  ${S.leavePrompt&&isOn?`<div class="rules-box" style="border-color:#ff8c00">
+    <p style="font-weight:700;color:#ffb347;margin-bottom:6px">Leave this match?</p>
+    <p style="margin-bottom:8px">If you leave now, your opponent can win by forfeit.</p>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button class="btn" onclick="S.leavePrompt=false;render()">Cancel</button>
+      <button class="btn" style="border-color:#ff8c00;color:#ffb347" onclick="resetGame();S.screen='mode';render()">Confirm Leave</button>
+    </div>
+  </div>`:""}
   ${S.showRules?`<div class="rules-box">
     <p style="font-weight:700;color:#daa520;margin-bottom:6px">How to Play</p>
     <p style="margin-bottom:5px">Each player owns one row (7 pits). You play the bottom row.</p>
