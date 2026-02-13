@@ -275,8 +275,16 @@ const J4F = (() => {
         others.sort((a, b) => (a.ts || 0) - (b.ts || 0));
         const opponent = others[0];
 
-        // We create the room (first come first serve — use our uid as tiebreak)
-        if (uid < opponent.uid) {
+        // Deterministic creator election for same-user multi-device case:
+        // compare tuple (uid, queueEntryId) so two devices with same uid still break ties.
+        const myUid = String(uid || "");
+        const opponentUid = String(opponent.uid || "");
+        const shouldCreateRoom =
+          myUid < opponentUid ||
+          (myUid === opponentUid && String(myEntryId) < String(opponent.key));
+
+        // Only one side creates the room; the other side waits for roomCode on myRef listener.
+        if (shouldCreateRoom) {
           cleanup();
           try {
             const { code } = await roomModule.create(gameId, initialState);
@@ -289,7 +297,7 @@ const J4F = (() => {
             if (onTimeout) onTimeout("Failed to create room: " + e.message);
           }
         }
-        // else: the other player will create the room (their uid is smaller)
+        // else: the other player is the deterministic creator and will assign roomCode.
       });
 
       // Timeout after 30s
