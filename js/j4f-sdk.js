@@ -55,23 +55,17 @@ const J4F = (() => {
     // Sign in with Google
     async login() {
       const provider = new firebase.auth.GoogleAuthProvider();
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-      // Use redirect on mobile — popups are unreliable (blocked by browsers, third-party cookie issues)
-      if (isMobile) {
-        await auth.signInWithRedirect(provider);
-        return null; // will reload
-      }
 
       try {
-        const result = await auth.signInWithPopup(provider);
+        await auth.signInWithPopup(provider);
         return authModule.getUser();
       } catch (e) {
-        // Popup blocked or closed — fall back to redirect
+        // Popup unavailable/blocked — fall back to redirect
         if (
           e.code === "auth/popup-blocked" ||
           e.code === "auth/popup-closed-by-user" ||
-          e.code === "auth/cancelled-popup-request"
+          e.code === "auth/cancelled-popup-request" ||
+          e.code === "auth/operation-not-supported-in-this-environment"
         ) {
           await auth.signInWithRedirect(provider);
           return null; // will reload
