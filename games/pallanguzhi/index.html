@@ -127,9 +127,10 @@ const S={
   rematchRequestedBy:null, rematchDeadline:null, rematchAcceptedBy:[],
   showRules:false, inviteMsg:"",
   // matchmaking
-  searching:false, searchMsg:"",
+  searching:false, searchMsg:"", matchmakeStatus:null,
 };
 let ac=null, timerIv=null, autoTo=null, rematchIv=null, seenMoveId=0, lastAppliedRemoteMoveId=0, cancelMatchmake=null;
+const MATCH_RETRY_MAX=2;
 
 function sameArr(a,b){return Array.isArray(a)&&Array.isArray(b)&&a.length===b.length&&a.every((v,i)=>v===b[i])}
 
@@ -424,21 +425,23 @@ async function joinRoom(codeOverride){
 
 // Search Online — matchmaking
 function searchOnline(){
-  S.searching=true;S.searchMsg="Looking for players...";S.onlineErr="";render();
+  startMatchmakeAttempt(1);
+}
+
+function startMatchmakeAttempt(attempt){
+  S.searching=true;S.matchmakeStatus=null;S.onlineErr="";
+  S.searchMsg=`Looking for players... (attempt ${attempt}/${MATCH_RETRY_MAX+1})`;render();
   cancelMatchmake=J4F.room.matchmake(
     "pallanguzhi",
     {board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,turnId:0,animDone:{p0:true,p1:true},rematchRequestedBy:null,rematchDeadline:null,rematchAcceptedBy:[]},
     (code,player,roomData)=>{
-      // Matched!
-      cancelMatchmake=null;S.searching=false;
+      cancelMatchmake=null;S.searching=false;S.matchmakeStatus=null;
       S.roomCode=code;S.myPlayer=player;S.isOnline=true;
       S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;S.pendingMoves=[];S.turnId=0;S.animDone={p0:true,p1:true};S.officialTurnId=0;seenMoveId=0;lastAppliedRemoteMoveId=0;
       if(player===0){
-        // We created the room — wait for opponent to join
         S.opJoined=false;S.screen="lobby";render();
         setupHostListener();
       }else{
-        // We joined — start playing
         const st=roomData?.state||{};
         S.board=st.board||initBoard();S.scores=st.scores||[0,0];S.cp=st.cp||0;S.turnId=st.turnId||0;S.animDone=st.animDone||{p0:true,p1:true};S.officialTurnId=S.turnId;
         S.opJoined=true;S.gameMode="online";S.screen="game";render();
@@ -446,17 +449,33 @@ function searchOnline(){
         if(S.cp===S.myPlayer)startTimer();
       }
     },
-    (msg)=>{
-      // Timeout or error
-      cancelMatchmake=null;S.searching=false;
-      S.onlineErr=msg+" — try Send to Friends instead";render();
-    }
+    (status)=>{
+      cancelMatchmake=null;
+      const payload=typeof status==="string"
+        ?{status:"matchmake_error",reasonCode:"UNKNOWN",message:status,retryable:false,nextAction:"Use Send to Friends to share an invite code."}
+        :status;
+      const canRetry=attempt<=MATCH_RETRY_MAX&&payload.retryable!==false;
+      if(canRetry){
+        S.searchMsg=`${payload.message} Retrying... (${attempt+1}/${MATCH_RETRY_MAX+1})`;
+        render();
+        setTimeout(()=>startMatchmakeAttempt(attempt+1),700);
+        return;
+      }
+      S.searching=false;
+      S.matchmakeStatus={
+        ...payload,
+        attempt,
+        nextAction:payload.nextAction||"Tap Send to Friends, share the code, then ask your friend to join.",
+      };
+      S.onlineErr=`${payload.message} (${payload.reasonCode})`;render();
+    },
+    {timeoutMs:30000,maxJoinAttempts:2,maxCreateAttempts:2,staleEntryMs:45000}
   );
 }
 
 function cancelSearch(){
   if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
-  S.searching=false;S.searchMsg="";render();
+  S.searching=false;S.searchMsg="";S.matchmakeStatus=null;render();
 }
 
 // Listeners
@@ -491,7 +510,7 @@ function resetGame(){
   stopTimer();J4F.room.leave().catch(()=>{});
   clearRematchState();
   if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
-  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",inviteMsg:"",searching:false,searchMsg:"",pendingMoves:[],rematchRequestedBy:null,rematchDeadline:null,rematchAcceptedBy:[]});
+  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",inviteMsg:"",searching:false,searchMsg:"",matchmakeStatus:null,pendingMoves:[],rematchRequestedBy:null,rematchDeadline:null,rematchAcceptedBy:[]});
   S.turnId=0;S.animDone={p0:true,p1:true};S.officialTurnId=0;
   seenMoveId=0;lastAppliedRemoteMoveId=0;
 }
@@ -673,19 +692,23 @@ function renderOnline(){
 }
 
 function renderSearching(){
+  const hasFail=!!S.matchmakeStatus;
   let h=`<div class="screen" style="padding-top:40px;justify-content:center;align-items:center">
     <div class="title" style="font-size:24px">பல்லாங்குழி</div>
     <div style="font-size:48px;margin:20px 0">🔍</div>
-    <p style="color:#5bc0de;font-size:16px;font-weight:700">Searching for opponent</p>
-    <div class="anim-pulse" style="color:#7ab8d4;font-size:14px;margin-top:4px">
-      Looking for players<span style="display:inline-flex;gap:2px">
+    <p style="color:#5bc0de;font-size:16px;font-weight:700">${hasFail?"Matchmaking ended":"Searching for opponent"}</p>
+    <div class="${hasFail?"":"anim-pulse"}" style="color:#7ab8d4;font-size:14px;margin-top:4px">
+      ${S.searchMsg||"Looking for players"}<span style="display:inline-flex;gap:2px">
         <span style="animation:dotBlink 1.4s ease infinite">.</span>
         <span style="animation:dotBlink 1.4s ease infinite .2s">.</span>
         <span style="animation:dotBlink 1.4s ease infinite .4s">.</span>
       </span>
     </div>
-    <p style="color:#705838;font-size:11px;margin-top:12px">This may take up to 30 seconds</p>
-    <button class="btn" style="margin-top:20px" onclick="cancelSearch();S.screen='online';render()">Cancel</button>
+    <p style="color:#705838;font-size:11px;margin-top:12px">This may take up to 30 seconds per attempt</p>
+    ${hasFail?`<div class="error-box" style="margin-top:10px">⚠️ ${S.matchmakeStatus.message}<br><span style="font-size:11px;opacity:.9">Code: ${S.matchmakeStatus.reasonCode}</span><br><span style="font-size:11px;opacity:.9">Next: ${S.matchmakeStatus.nextAction}</span></div>`:""}
+    ${hasFail?`<button class="btn-primary" style="margin-top:12px" onclick="searchOnline()">Retry Search</button>`:""}
+    <button class="btn" style="margin-top:12px" onclick="cancelSearch();S.screen='online';render()">${hasFail?"Back":"Cancel"}</button>
+    ${hasFail?`<button class="card" style="margin-top:8px;background:linear-gradient(145deg,#1a4a2a,#0f3018);border-color:#2a8c4a" onclick="cancelSearch();S.screen='online';render();sendToFriends()"><div style="font-size:24px">👫</div><div style="flex:1"><div style="color:#4ade80;font-weight:700;font-size:14px">Send to Friends</div><div style="color:#6bcb77;font-size:11px">Next: Create a room and share the code now</div></div></button>`:""}
   </div>`;
   app.innerHTML=h;
 }
