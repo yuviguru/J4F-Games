@@ -289,7 +289,10 @@ function searchOnline(){
     (msg)=>{
       // Timeout or error
       cancelMatchmake=null;S.searching=false;
-      S.onlineErr=msg+" — try Send to Friends instead";render();
+      S.searchMsg="";
+      S.onlineErr=msg+" — try Send to Friends instead";
+      S.screen="online";
+      render();
     }
   );
 }
