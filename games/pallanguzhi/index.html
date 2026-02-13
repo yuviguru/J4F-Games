@@ -118,8 +118,10 @@ const S={
   // online
   roomCode:"", joinCode:"", myPlayer:0, isOnline:false, opJoined:false, onlineErr:"",
   showRules:false, inviteMsg:"",
+  // matchmaking
+  searching:false, searchMsg:"",
 };
-let ac=null, timerIv=null, autoTo=null, seenMoveId=0;
+let ac=null, timerIv=null, autoTo=null, seenMoveId=0, cancelMatchmake=null;
 
 function ea(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();if(ac.state==="suspended")ac.resume();return ac;}
 
@@ -225,6 +227,8 @@ function handlePit(pit){
 }
 
 /* ═══════ ONLINE ═══════ */
+
+// Create room (used by Send to Friends)
 async function createRoom(){
   S.onlineErr="";
   try{
@@ -232,41 +236,70 @@ async function createRoom(){
     S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;
     S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;seenMoveId=0;
     S.screen="lobby";render();
-    // Listen for opponent join AND moves (setupHostListener handles both)
     setupHostListener();
   }catch(e){S.onlineErr="Failed: "+(e.message||e);render()}
 }
 
-async function joinRoom(){
+// Send to Friends — auto-create room, go to lobby with share options
+async function sendToFriends(){
+  await createRoom();
+}
+
+// Join a room by code
+async function joinRoom(codeOverride){
   S.onlineErr="";
-  const code=S.joinCode.toUpperCase().trim();
+  const code=(codeOverride||S.joinCode).toUpperCase().trim();
   if(code.length!==4){S.onlineErr="Enter a 4-letter code";render();return}
   try{
     const{roomData}=await J4F.room.join(code);
-    // Match seed type from host (default cowrie)
     S.roomCode=code;S.myPlayer=1;S.isOnline=true;S.opJoined=true;
     const st=roomData.state||{};
     S.board=st.board||initBoard();S.scores=st.scores||[0,0];S.cp=st.cp||0;
     S.gameOver=false;S.winner=null;seenMoveId=0;
     S.gameMode="online";S.screen="game";render();
-    // Listen for moves
-    J4F.room.onUpdate(data=>{
-      if(data.moveId>seenMoveId&&!S.anim&&data.lastMove){
-        const mv=data.lastMove;
-        if(mv.mover!==S.myPlayer){
-          seenMoveId=data.moveId;
-          // Replay opponent's move with animation
-          doMove(mv.pit);
-        }else{
-          seenMoveId=data.moveId;
-        }
-      }
-    });
+    setupGuestListener();
     if(S.cp===S.myPlayer)startTimer();
   }catch(e){S.onlineErr=e.message||"Failed to join";render()}
 }
 
-// Host also listens for moves after game starts
+// Search Online — matchmaking
+function searchOnline(){
+  S.searching=true;S.searchMsg="Looking for players...";S.onlineErr="";render();
+  cancelMatchmake=J4F.room.matchmake(
+    "pallanguzhi",
+    {board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null},
+    (code,player,roomData)=>{
+      // Matched!
+      cancelMatchmake=null;S.searching=false;
+      S.roomCode=code;S.myPlayer=player;S.isOnline=true;
+      S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;seenMoveId=0;
+      if(player===0){
+        // We created the room — wait for opponent to join
+        S.opJoined=false;S.screen="lobby";render();
+        setupHostListener();
+      }else{
+        // We joined — start playing
+        const st=roomData?.state||{};
+        S.board=st.board||initBoard();S.scores=st.scores||[0,0];S.cp=st.cp||0;
+        S.opJoined=true;S.gameMode="online";S.screen="game";render();
+        setupGuestListener();
+        if(S.cp===S.myPlayer)startTimer();
+      }
+    },
+    (msg)=>{
+      // Timeout or error
+      cancelMatchmake=null;S.searching=false;
+      S.onlineErr=msg+" — try Send to Friends instead";render();
+    }
+  );
+}
+
+function cancelSearch(){
+  if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
+  S.searching=false;S.searchMsg="";render();
+}
+
+// Listeners
 function setupHostListener(){
   J4F.room.onUpdate(data=>{
     if(!S.opJoined&&data.guest&&data.status==="playing"){
@@ -275,12 +308,18 @@ function setupHostListener(){
     }
     if(data.moveId>seenMoveId&&!S.anim&&data.lastMove){
       const mv=data.lastMove;
-      if(mv.mover!==S.myPlayer){
-        seenMoveId=data.moveId;
-        doMove(mv.pit);
-      }else{
-        seenMoveId=data.moveId;
-      }
+      if(mv.mover!==S.myPlayer){seenMoveId=data.moveId;doMove(mv.pit)}
+      else{seenMoveId=data.moveId}
+    }
+  });
+}
+
+function setupGuestListener(){
+  J4F.room.onUpdate(data=>{
+    if(data.moveId>seenMoveId&&!S.anim&&data.lastMove){
+      const mv=data.lastMove;
+      if(mv.mover!==S.myPlayer){seenMoveId=data.moveId;doMove(mv.pit)}
+      else{seenMoveId=data.moveId}
     }
   });
 }
@@ -288,19 +327,22 @@ function setupHostListener(){
 /* ═══════ RESET ═══════ */
 function resetGame(){
   stopTimer();J4F.room.leave().catch(()=>{});
-  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",inviteMsg:""});
+  if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
+  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",inviteMsg:"",searching:false,searchMsg:""});
   seenMoveId=0;
 }
 
 /* ═══════ SHARE ═══════ */
 function shareWA(code){
-  const url=window.location.origin+"/games/pallanguzhi/";
-  const text=code?"🎲 Join my Pallanguzhi game on J4F!\n\nRoom code: *"+code+"*\n\nPlay here: "+url:"🎲 Let's play Pallanguzhi on J4F!\n\nPlay here: "+url;
+  const base=window.location.origin+"/games/pallanguzhi/";
+  const url=code?base+"?room="+code:base;
+  const text=code?"🎲 Join my Pallanguzhi game on J4F!\n\nTap to play: "+url:"🎲 Let's play Pallanguzhi on J4F!\n\nPlay here: "+url;
   J4F.share.whatsapp(text);
 }
 async function shareCopy(code){
-  const url=window.location.origin+"/games/pallanguzhi/";
-  const text=code?"Join my Pallanguzhi game!\nRoom code: "+code+"\n\nPlay here: "+url:"Let's play Pallanguzhi!\n\nPlay here: "+url;
+  const base=window.location.origin+"/games/pallanguzhi/";
+  const url=code?base+"?room="+code:base;
+  const text=code?"Join my Pallanguzhi game!\n\nTap to play: "+url:"Let's play Pallanguzhi!\n\nPlay here: "+url;
   const ok=await J4F.share.copy(text);
   S.inviteMsg=ok?"Copied!":"Couldn't copy";render();setTimeout(()=>{S.inviteMsg="";render()},2000);
 }
@@ -315,6 +357,7 @@ function render(){
   if(S.screen==="select")renderSelect();
   else if(S.screen==="mode")renderMode();
   else if(S.screen==="online")renderOnline();
+  else if(S.screen==="searching")renderSearching();
   else if(S.screen==="lobby")renderLobby();
   else if(S.screen==="game")renderGame();
 }
@@ -364,9 +407,6 @@ function renderMode(){
       <div style="flex:1"><div style="color:#5bc0de;font-weight:700;font-size:15px">Online Multiplayer</div><div style="color:#7ab8d4;font-size:11px">Play with a friend remotely</div></div>
     </div>
 
-    <div class="btn-wa" onclick="shareWA()">💬 Share on WhatsApp</div>
-    <div class="btn-copy" onclick="shareCopy()">📋 Copy Invite Link${S.inviteMsg?` <span style="color:#fbbf24;font-size:11px">✓ ${S.inviteMsg}</span>`:""}</div>
-
     <p style="font-size:13px;font-weight:600;margin:8px 0 0">🤖 Play vs AI</p>`;
   diffs.forEach(d=>{
     h+=`<div class="card" onclick="resetGame();S.seedType=SEEDS[${SEEDS.indexOf(st)}];S.gameMode='ai';S.aiDiff='${d.id}';S.screen='game';render();startTimer()">
@@ -375,7 +415,9 @@ function renderMode(){
       <div style="color:#6b4530;font-size:16px">→</div>
     </div>`;
   });
-  h+=`<button class="btn" style="margin-top:12px" onclick="S.screen='select';render()">← Change Seeds</button></div>`;
+  h+=`<button class="btn" style="margin-top:12px" onclick="S.screen='select';render()">← Change Seeds</button>
+    <div style="margin-top:8px;font-size:11px;color:#705838;cursor:pointer" onclick="shareWA()">📤 Share this game with friends${S.inviteMsg?' <span style="color:#fbbf24">✓ '+S.inviteMsg+'</span>':""}</div>
+  </div>`;
   app.innerHTML=h;
 }
 
@@ -386,23 +428,44 @@ function renderOnline(){
     <div class="subtitle">${st.emoji} ${st.name}</div>
     <p style="color:#5bc0de;font-size:15px;font-weight:600;margin:4px 0">🌐 Online Play</p>
 
-    <button class="card" style="background:linear-gradient(135deg,#1a3a5c,#0f2840);border-color:#2a6a9c;justify-content:center;flex-direction:column;align-items:center;padding:18px;gap:6px" onclick="createRoom()">
-      <div style="font-size:28px">🏠</div>
-      <div style="color:#5bc0de;font-weight:700;font-size:16px">Create Room</div>
-      <div style="color:#7ab8d4;font-size:11px">Get a code to share</div>
+    <button class="card" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.screen='searching';searchOnline()">
+      <div style="font-size:28px">🔍</div>
+      <div style="flex:1"><div style="color:#5bc0de;font-weight:700;font-size:15px">Search Online</div><div style="color:#7ab8d4;font-size:11px">Match with a real player</div></div>
     </button>
 
-    <div style="color:#6b4530;font-size:12px;letter-spacing:3px">── OR ──</div>
+    <button class="card" style="background:linear-gradient(145deg,#1a4a2a,#0f3018);border-color:#2a8c4a" onclick="sendToFriends()">
+      <div style="font-size:28px">👫</div>
+      <div style="flex:1"><div style="color:#4ade80;font-weight:700;font-size:15px">Send to Friends</div><div style="color:#6bcb77;font-size:11px">Create a link to share</div></div>
+    </button>
 
-    <div style="width:100%;background:linear-gradient(135deg,#3a2a1a,#2a1a0a);border:2px solid #6b4530;border-radius:14px;padding:18px;text-align:center">
-      <div style="font-size:28px;margin-bottom:6px">🎮</div>
-      <div style="color:#daa520;font-weight:700;font-size:16px;margin-bottom:10px">Join Room</div>
-      <input class="join-input" type="text" maxlength="4" placeholder="ABCD" value="${S.joinCode}" oninput="S.joinCode=this.value.toUpperCase();S.onlineErr=''">
-      <br><button class="btn-primary" style="margin-top:10px" onclick="joinRoom()">Join</button>
+    <div style="color:#6b4530;font-size:11px;letter-spacing:2px;margin:4px 0">── HAVE A CODE? ──</div>
+
+    <div style="width:100%;background:linear-gradient(135deg,#3a2a1a,#2a1a0a);border:2px solid #6b4530;border-radius:14px;padding:14px;text-align:center;display:flex;align-items:center;gap:10px;justify-content:center">
+      <div style="font-size:20px">🎮</div>
+      <input class="join-input" type="text" maxlength="4" placeholder="ABCD" style="max-width:120px;padding:8px;font-size:20px" value="${S.joinCode}" oninput="S.joinCode=this.value.toUpperCase();S.onlineErr=''">
+      <button class="btn-primary" onclick="joinRoom()">Join</button>
     </div>
 
     ${S.onlineErr?`<div class="error-box">⚠️ ${S.onlineErr}</div>`:""}
     <button class="btn" onclick="S.screen='mode';render()">← Back</button>
+  </div>`;
+  app.innerHTML=h;
+}
+
+function renderSearching(){
+  let h=`<div class="screen" style="padding-top:40px;justify-content:center;align-items:center">
+    <div class="title" style="font-size:24px">பல்லாங்குழி</div>
+    <div style="font-size:48px;margin:20px 0">🔍</div>
+    <p style="color:#5bc0de;font-size:16px;font-weight:700">Searching for opponent</p>
+    <div class="anim-pulse" style="color:#7ab8d4;font-size:14px;margin-top:4px">
+      Looking for players<span style="display:inline-flex;gap:2px">
+        <span style="animation:dotBlink 1.4s ease infinite">.</span>
+        <span style="animation:dotBlink 1.4s ease infinite .2s">.</span>
+        <span style="animation:dotBlink 1.4s ease infinite .4s">.</span>
+      </span>
+    </div>
+    <p style="color:#705838;font-size:11px;margin-top:12px">This may take up to 30 seconds</p>
+    <button class="btn" style="margin-top:20px" onclick="cancelSearch();S.screen='online';render()">Cancel</button>
   </div>`;
   app.innerHTML=h;
 }
@@ -551,7 +614,24 @@ function renderGame(){
 }
 
 /* ═══════ INIT ═══════ */
-render();
+// Check for deep-link: ?room=CODE
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  const roomCode=params.get("room");
+  if(roomCode&&roomCode.length===4){
+    // Default to cowrie seeds for deep-link joins
+    S.seedType=SEEDS[0];
+    S.joinCode=roomCode.toUpperCase();
+    S.screen="online";
+    render();
+    // Auto-join after a short delay to let Firebase init
+    setTimeout(()=>joinRoom(roomCode),500);
+    // Clean URL without reloading
+    window.history.replaceState({},"",window.location.pathname);
+    return;
+  }
+  render();
+})();
 </script>
 </body>
 </html>

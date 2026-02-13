@@ -220,6 +220,95 @@ const J4F = (() => {
       if (!currentRoom) return;
       await currentRoom.ref.update({ status: "finished", winner });
     },
+
+    // ─── MATCHMAKING ───
+    // Search for a random opponent. Calls onMatched(code, player) when found.
+    // Returns a cancel function.
+    matchmake(gameId, initialState, onMatched, onTimeout) {
+      const user = authModule.getUser();
+      const uid = user ? user.uid : "anon_" + Math.random().toString(36).slice(2, 8);
+      const queueRef = db.ref("matchmaking/" + gameId);
+      const myRef = queueRef.child(uid);
+      let cancelled = false;
+      let matchListener = null;
+
+      // Write ourselves into the queue
+      myRef.set({
+        uid,
+        name: user ? user.name : "Player",
+        ts: firebase.database.ServerValue.TIMESTAMP,
+        roomCode: null, // set by the matcher
+      });
+      myRef.onDisconnect().remove();
+
+      // Listen for someone to assign us a roomCode
+      const myListener = myRef.on("value", async (snap) => {
+        const val = snap.val();
+        if (!val || cancelled) return;
+        if (val.roomCode) {
+          // We've been matched — join the room
+          cleanup();
+          try {
+            const { roomData } = await roomModule.join(val.roomCode);
+            onMatched(val.roomCode, 1, roomData);
+          } catch (e) {
+            if (onTimeout) onTimeout("Failed to join: " + e.message);
+          }
+        }
+      });
+
+      // Also scan queue for another waiting player to match with
+      matchListener = queueRef.on("value", async (snap) => {
+        if (cancelled) return;
+        const queue = snap.val();
+        if (!queue) return;
+
+        // Find another player (not us) who doesn't have a roomCode yet
+        const others = Object.values(queue).filter(
+          (p) => p.uid !== uid && !p.roomCode
+        );
+        if (others.length === 0) return;
+
+        // Pick the one who's been waiting longest
+        others.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+        const opponent = others[0];
+
+        // We create the room (first come first serve — use our uid as tiebreak)
+        if (uid < opponent.uid) {
+          cleanup();
+          try {
+            const { code } = await roomModule.create(gameId, initialState);
+            // Tell the opponent which room to join
+            await queueRef.child(opponent.uid).update({ roomCode: code });
+            // Remove both from queue
+            await myRef.remove();
+            onMatched(code, 0, null);
+          } catch (e) {
+            if (onTimeout) onTimeout("Failed to create room: " + e.message);
+          }
+        }
+        // else: the other player will create the room (their uid is smaller)
+      });
+
+      // Timeout after 30s
+      const timer = setTimeout(() => {
+        if (!cancelled) {
+          cleanup();
+          if (onTimeout) onTimeout("No players found");
+        }
+      }, 30000);
+
+      function cleanup() {
+        cancelled = true;
+        clearTimeout(timer);
+        if (matchListener) queueRef.off("value", matchListener);
+        myRef.off("value", myListener);
+        myRef.remove().catch(() => {});
+      }
+
+      // Return cancel function
+      return cleanup;
+    },
   };
 
   // ─── LEADERBOARD MODULE ───
