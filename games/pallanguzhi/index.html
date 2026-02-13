@@ -117,12 +117,40 @@ const S={
   timeLeft:TURN_TIME, timedOut:false, aiThink:false,
   // online
   roomCode:"", joinCode:"", myPlayer:0, isOnline:false, opJoined:false, onlineErr:"",
-  pendingMoves:[],
+  pendingMoves:[], turnId:0, animDone:{p0:true,p1:true}, officialTurnId:0,
   showRules:false, inviteMsg:"",
   // matchmaking
   searching:false, searchMsg:"",
 };
 let ac=null, timerIv=null, autoTo=null, seenMoveId=0, lastAppliedRemoteMoveId=0, cancelMatchmake=null;
+
+function sameArr(a,b){return Array.isArray(a)&&Array.isArray(b)&&a.length===b.length&&a.every((v,i)=>v===b[i])}
+
+function canAdvanceOnlineTurn(){
+  return S.isOnline&&!S.anim&&!S.gameOver&&S.animDone.p0&&S.animDone.p1&&S.officialTurnId===S.turnId;
+}
+
+function syncOnlineTurnState(st={}){
+  if(typeof st.turnId==="number")S.turnId=st.turnId;
+  if(st.animDone)S.animDone={p0:!!st.animDone.p0,p1:!!st.animDone.p1};
+  if(typeof st.turnId==="number"&&Array.isArray(st.board)&&Array.isArray(st.scores)&&typeof st.cp==="number"){
+    if(S.turnId===st.turnId&&!S.anim){
+      if(!sameArr(S.board,st.board)||!sameArr(S.scores,st.scores)||S.cp!==st.cp||S.gameOver!==!!st.gameOver||S.winner!==st.winner){
+        S.board=st.board.slice();S.scores=st.scores.slice();S.cp=st.cp;S.gameOver=!!st.gameOver;S.winner=st.winner??null;
+      }
+      S.officialTurnId=st.turnId;
+    }
+  }
+  if(canAdvanceOnlineTurn()&&S.cp===S.myPlayer&&!timerIv)startTimer();
+}
+
+function markAnimDoneForTurn(turnId){
+  if(!S.isOnline||turnId!==S.turnId)return;
+  const me=S.myPlayer===0?"p0":"p1";
+  if(S.animDone[me])return;
+  S.animDone[me]=true;
+  J4F.room.updateState({turnId,animDone:{p0:S.animDone.p0,p1:S.animDone.p1}}).catch(()=>{});
+}
 
 function ea(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();if(ac.state==="suspended")ac.resume();return ac;}
 
@@ -159,11 +187,23 @@ function autoMove(){
 }
 
 /* ═══════ MOVE ENGINE ═══════ */
-async function doMove(pit){
+async function doMove(pit,meta={}){
   if(S.anim)return;
+  const mover=meta.mover??S.cp;
+  const turnId=meta.turnId??(S.turnId+1);
+  const isLocalOnlineTurn=S.isOnline&&mover===S.myPlayer&&!meta.remote;
+
+  if(S.isOnline){
+    S.turnId=turnId;
+    S.animDone={p0:false,p1:false};
+    if(isLocalOnlineTurn){
+      J4F.room.sendMove({pit,mover,turnId}).catch(()=>{});
+      J4F.room.updateState({turnId,animDone:{p0:false,p1:false}}).catch(()=>{});
+    }
+  }
+
   S.anim=true; stopTimer(); ea();
   const steps=compSteps(S.board,pit);
-  const mover=S.cp;
 
   for(const st of steps){
     if(st.t==="pickup"){S.handPit=st.p;S.handAct="pickup";S.holding=st.s;playPickup();S.board=st.b.slice();render();await delay(220)}
@@ -197,9 +237,19 @@ async function doMove(pit){
   }
   S.anim=false;
 
-  // Send move to Firebase only if this is OUR move (not a replay of opponent's move)
-  if(S.isOnline&&mover===S.myPlayer){
-    J4F.room.sendMoveAndState({pit,mover},{board:S.board,scores:S.scores,cp:S.cp,gameOver:S.gameOver,winner:S.winner}).catch(()=>{});
+  if(S.isOnline){
+    if(isLocalOnlineTurn){
+      J4F.room.updateState({
+        board:S.board,
+        scores:S.scores,
+        cp:S.cp,
+        gameOver:S.gameOver,
+        winner:S.winner,
+        turnId,
+      }).catch(()=>{});
+      S.officialTurnId=turnId;
+    }
+    markAnimDoneForTurn(turnId);
   }
 
   if(drainPendingRemoteMoves())return;
@@ -210,14 +260,14 @@ async function doMove(pit){
   if(!S.gameOver){
     if(S.gameMode==="ai"&&S.cp===1){scheduleAI()}
     else if(S.isOnline&&S.cp!==S.myPlayer){/* wait for opponent */}
-    else{startTimer()}
+    else if(!S.isOnline||canAdvanceOnlineTurn()){startTimer()}
   }
 }
 
 function enqueueRemoteMove(moveId,mv){
   if(!mv||mv.mover===S.myPlayer||moveId<=lastAppliedRemoteMoveId)return;
   if(S.pendingMoves.some(pm=>pm.moveId===moveId))return;
-  S.pendingMoves.push({moveId,pit:mv.pit,mover:mv.mover});
+  S.pendingMoves.push({moveId,pit:mv.pit,mover:mv.mover,turnId:mv.turnId});
   S.pendingMoves.sort((a,b)=>a.moveId-b.moveId);
 }
 
@@ -229,7 +279,7 @@ function drainPendingRemoteMoves(){
     if(mv.mover===S.myPlayer){S.pendingMoves.shift();continue}
     S.pendingMoves.shift();
     lastAppliedRemoteMoveId=mv.moveId;
-    doMove(mv.pit);
+    doMove(mv.pit,{mover:mv.mover,turnId:mv.turnId,remote:true});
     return true;
   }
   return false;
@@ -256,9 +306,9 @@ function handlePit(pit){
 async function createRoom(){
   S.onlineErr="";
   try{
-    const{code}=await J4F.room.create("pallanguzhi",{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null});
+    const{code}=await J4F.room.create("pallanguzhi",{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,turnId:0,animDone:{p0:true,p1:true}});
     S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;
-    S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;S.pendingMoves=[];seenMoveId=0;lastAppliedRemoteMoveId=0;
+    S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;S.pendingMoves=[];S.turnId=0;S.animDone={p0:true,p1:true};S.officialTurnId=0;seenMoveId=0;lastAppliedRemoteMoveId=0;
     S.screen="lobby";render();
     setupHostListener();
   }catch(e){S.onlineErr="Failed: "+(e.message||e);render()}
@@ -279,7 +329,7 @@ async function joinRoom(codeOverride){
     S.roomCode=code;S.myPlayer=1;S.isOnline=true;S.opJoined=true;
     const st=roomData.state||{};
     S.board=st.board||initBoard();S.scores=st.scores||[0,0];S.cp=st.cp||0;
-    S.gameOver=false;S.winner=null;S.pendingMoves=[];seenMoveId=0;lastAppliedRemoteMoveId=0;
+    S.gameOver=false;S.winner=null;S.pendingMoves=[];S.turnId=st.turnId||0;S.animDone=st.animDone||{p0:true,p1:true};S.officialTurnId=S.turnId;seenMoveId=0;lastAppliedRemoteMoveId=0;
     S.gameMode="online";S.screen="game";render();
     setupGuestListener();
     if(S.cp===S.myPlayer)startTimer();
@@ -291,12 +341,12 @@ function searchOnline(){
   S.searching=true;S.searchMsg="Looking for players...";S.onlineErr="";render();
   cancelMatchmake=J4F.room.matchmake(
     "pallanguzhi",
-    {board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null},
+    {board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,turnId:0,animDone:{p0:true,p1:true}},
     (code,player,roomData)=>{
       // Matched!
       cancelMatchmake=null;S.searching=false;
       S.roomCode=code;S.myPlayer=player;S.isOnline=true;
-      S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;S.pendingMoves=[];seenMoveId=0;lastAppliedRemoteMoveId=0;
+      S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;S.pendingMoves=[];S.turnId=0;S.animDone={p0:true,p1:true};S.officialTurnId=0;seenMoveId=0;lastAppliedRemoteMoveId=0;
       if(player===0){
         // We created the room — wait for opponent to join
         S.opJoined=false;S.screen="lobby";render();
@@ -304,7 +354,7 @@ function searchOnline(){
       }else{
         // We joined — start playing
         const st=roomData?.state||{};
-        S.board=st.board||initBoard();S.scores=st.scores||[0,0];S.cp=st.cp||0;
+        S.board=st.board||initBoard();S.scores=st.scores||[0,0];S.cp=st.cp||0;S.turnId=st.turnId||0;S.animDone=st.animDone||{p0:true,p1:true};S.officialTurnId=S.turnId;
         S.opJoined=true;S.gameMode="online";S.screen="game";render();
         setupGuestListener();
         if(S.cp===S.myPlayer)startTimer();
@@ -326,6 +376,7 @@ function cancelSearch(){
 // Listeners
 function setupHostListener(){
   J4F.room.onUpdate(data=>{
+    syncOnlineTurnState(data.state||{});
     if(!S.opJoined&&data.guest&&data.status==="playing"){
       S.opJoined=true;S.gameMode="online";S.screen="game";render();startTimer();
       return;
@@ -340,6 +391,7 @@ function setupHostListener(){
 
 function setupGuestListener(){
   J4F.room.onUpdate(data=>{
+    syncOnlineTurnState(data.state||{});
     if(data.moveId>seenMoveId&&data.lastMove){
       seenMoveId=data.moveId;
       enqueueRemoteMove(data.moveId,data.lastMove);
@@ -353,6 +405,7 @@ function resetGame(){
   stopTimer();J4F.room.leave().catch(()=>{});
   if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
   Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",inviteMsg:"",searching:false,searchMsg:"",pendingMoves:[]});
+  S.turnId=0;S.animDone={p0:true,p1:true};S.officialTurnId=0;
   seenMoveId=0;lastAppliedRemoteMoveId=0;
 }
 
