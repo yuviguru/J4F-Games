@@ -227,6 +227,11 @@ const J4F = (() => {
       let cancelled = false;
       let matchListener = null;
 
+      function fail(message) {
+        cleanup();
+        if (onTimeout) onTimeout(message);
+      }
+
       // Write ourselves into the queue
       myRef.set({
         key: myEntryId,
@@ -234,24 +239,32 @@ const J4F = (() => {
         name: user ? user.name : "Player",
         ts: firebase.database.ServerValue.TIMESTAMP,
         roomCode: null, // set by the matcher
+      }).catch((e) => {
+        fail("Matchmaking unavailable: " + e.message);
       });
       myRef.onDisconnect().remove();
 
       // Listen for someone to assign us a roomCode
-      const myListener = myRef.on("value", async (snap) => {
-        const val = snap.val();
-        if (!val || cancelled) return;
-        if (val.roomCode) {
-          // We've been matched — join the room
-          cleanup();
-          try {
-            const { roomData } = await roomModule.join(val.roomCode);
-            onMatched(val.roomCode, 1, roomData);
-          } catch (e) {
-            if (onTimeout) onTimeout("Failed to join: " + e.message);
+      const myListener = myRef.on(
+        "value",
+        async (snap) => {
+          const val = snap.val();
+          if (!val || cancelled) return;
+          if (val.roomCode) {
+            // We've been matched — join the room
+            cleanup();
+            try {
+              const { roomData } = await roomModule.join(val.roomCode);
+              onMatched(val.roomCode, 1, roomData);
+            } catch (e) {
+              if (onTimeout) onTimeout("Failed to join: " + e.message);
+            }
           }
+        },
+        (e) => {
+          fail("Matchmaking read error: " + e.message);
         }
-      });
+      );
 
       // Also scan queue for another waiting player to match with
       matchListener = queueRef.on("value", async (snap) => {
@@ -292,6 +305,8 @@ const J4F = (() => {
           }
         }
         // else: the other player is the deterministic creator and will assign roomCode.
+      }, (e) => {
+        fail("Matchmaking queue error: " + e.message);
       });
 
       // Timeout after 30s

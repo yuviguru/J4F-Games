@@ -34,6 +34,14 @@ Go to **Realtime Database** → **Rules** and paste:
         ".write": true
       }
     },
+    "matchmaking": {
+      "$gameId": {
+        "$entryId": {
+          ".read": true,
+          ".write": true
+        }
+      }
+    },
     "users": {
       "$uid": {
         ".read": true,
