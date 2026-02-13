@@ -227,8 +227,9 @@ const J4F = (() => {
     matchmake(gameId, initialState, onMatched, onTimeout, options = {}) {
       const user = authModule.getUser();
       const uid = user ? user.uid : "anon_" + Math.random().toString(36).slice(2, 8);
+      const queueId = uid + "_" + Math.random().toString(36).slice(2, 8);
       const queueRef = db.ref("matchmaking/" + gameId);
-      const myRef = queueRef.child(uid);
+      const myRef = queueRef.child(queueId);
       const timeoutMs = options.timeoutMs || 30000;
       const maxJoinAttempts = options.maxJoinAttempts || 2;
       const maxCreateAttempts = options.maxCreateAttempts || 2;
@@ -265,6 +266,7 @@ const J4F = (() => {
 
       // Write ourselves into the queue
       myRef.set({
+        queueId,
         uid,
         name: user ? user.name : "Player",
         ts: firebase.database.ServerValue.TIMESTAMP,
@@ -301,31 +303,31 @@ const J4F = (() => {
         if (!queue) return;
 
         const now = Date.now();
-        Object.entries(queue).forEach(([entryUid, entry]) => {
+        Object.entries(queue).forEach(([entryKey, entry]) => {
           if (!entry || entry.roomCode || typeof entry.ts !== "number") return;
           if (now - entry.ts > staleEntryMs) {
-            queueRef.child(entryUid).remove().catch(() => {});
+            queueRef.child(entryKey).remove().catch(() => {});
           }
         });
 
         // Find another player (not us) who doesn't have a roomCode yet
-        const others = Object.values(queue).filter(
-          (p) => p.uid !== uid && !p.roomCode && typeof p.ts === "number" && now - p.ts <= staleEntryMs
-        );
+        const others = Object.entries(queue)
+          .filter(([entryKey, p]) => entryKey !== queueId && p && !p.roomCode && typeof p.ts === "number" && now - p.ts <= staleEntryMs)
+          .map(([entryKey, p]) => ({ ...p, queueId: p.queueId || entryKey }));
         if (others.length === 0) return;
 
         // Pick the one who's been waiting longest
-        others.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+        others.sort((a, b) => (a.ts || 0) - (b.ts || 0) || (a.queueId || "").localeCompare(b.queueId || ""));
         const opponent = others[0];
 
-        // We create the room (first come first serve — use our uid as tiebreak)
-        if (uid < opponent.uid) {
+        // We create the room (first come first serve — use queue id as tiebreak)
+        if (queueId < opponent.queueId) {
           isMatching = true;
           cleanup();
           try {
             const { code } = await retry(maxCreateAttempts, () => roomModule.create(gameId, initialState));
             // Tell the opponent which room to join
-            await queueRef.child(opponent.uid).update({ roomCode: code });
+            await queueRef.child(opponent.queueId).update({ roomCode: code });
             // Remove both from queue
             await myRef.remove();
             onMatched(code, 0, null);
