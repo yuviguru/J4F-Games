@@ -224,13 +224,44 @@ const J4F = (() => {
     // ─── MATCHMAKING ───
     // Search for a random opponent. Calls onMatched(code, player) when found.
     // Returns a cancel function.
-    matchmake(gameId, initialState, onMatched, onTimeout) {
+    matchmake(gameId, initialState, onMatched, onTimeout, options = {}) {
       const user = authModule.getUser();
       const uid = user ? user.uid : "anon_" + Math.random().toString(36).slice(2, 8);
       const queueRef = db.ref("matchmaking/" + gameId);
       const myRef = queueRef.child(uid);
+      const timeoutMs = options.timeoutMs || 30000;
+      const maxJoinAttempts = options.maxJoinAttempts || 2;
+      const maxCreateAttempts = options.maxCreateAttempts || 2;
+      const staleEntryMs = options.staleEntryMs || 45000;
       let cancelled = false;
       let matchListener = null;
+      let isMatching = false;
+
+      const buildStatus = (status, reasonCode, message, extra = {}) => ({
+        status,
+        reasonCode,
+        message,
+        ...extra,
+      });
+
+      const reportFailure = (payload) => {
+        if (onTimeout) onTimeout(payload && payload.message ? payload : buildStatus("matchmake_error", "UNKNOWN", String(payload || "Matchmaking failed")));
+      };
+
+      const retry = async (maxAttempts, action) => {
+        let lastError = null;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            return await action(attempt);
+          } catch (e) {
+            lastError = e;
+          }
+        }
+        throw lastError || new Error("Unknown retry failure");
+      };
+
+      // Register disconnect cleanup before queue-listen phase.
+      myRef.onDisconnect().remove();
 
       // Write ourselves into the queue
       myRef.set({
@@ -239,7 +270,6 @@ const J4F = (() => {
         ts: firebase.database.ServerValue.TIMESTAMP,
         roomCode: null, // set by the matcher
       });
-      myRef.onDisconnect().remove();
 
       // Listen for someone to assign us a roomCode
       const myListener = myRef.on("value", async (snap) => {
@@ -249,23 +279,38 @@ const J4F = (() => {
           // We've been matched — join the room
           cleanup();
           try {
-            const { roomData } = await roomModule.join(val.roomCode);
+            const { roomData } = await retry(maxJoinAttempts, () => roomModule.join(val.roomCode));
             onMatched(val.roomCode, 1, roomData);
           } catch (e) {
-            if (onTimeout) onTimeout("Failed to join: " + e.message);
+            reportFailure(
+              buildStatus("room_join_fail", "ROOM_JOIN_FAIL", "Unable to join the matched room.", {
+                details: e && e.message ? e.message : String(e),
+                retryable: true,
+                nextAction: "Tap Retry Search, or use Send to Friends and share your room code.",
+                maxAttempts: maxJoinAttempts,
+              })
+            );
           }
         }
       });
 
       // Also scan queue for another waiting player to match with
       matchListener = queueRef.on("value", async (snap) => {
-        if (cancelled) return;
+        if (cancelled || isMatching) return;
         const queue = snap.val();
         if (!queue) return;
 
+        const now = Date.now();
+        Object.entries(queue).forEach(([entryUid, entry]) => {
+          if (!entry || entry.roomCode || typeof entry.ts !== "number") return;
+          if (now - entry.ts > staleEntryMs) {
+            queueRef.child(entryUid).remove().catch(() => {});
+          }
+        });
+
         // Find another player (not us) who doesn't have a roomCode yet
         const others = Object.values(queue).filter(
-          (p) => p.uid !== uid && !p.roomCode
+          (p) => p.uid !== uid && !p.roomCode && typeof p.ts === "number" && now - p.ts <= staleEntryMs
         );
         if (others.length === 0) return;
 
@@ -275,28 +320,44 @@ const J4F = (() => {
 
         // We create the room (first come first serve — use our uid as tiebreak)
         if (uid < opponent.uid) {
+          isMatching = true;
           cleanup();
           try {
-            const { code } = await roomModule.create(gameId, initialState);
+            const { code } = await retry(maxCreateAttempts, () => roomModule.create(gameId, initialState));
             // Tell the opponent which room to join
             await queueRef.child(opponent.uid).update({ roomCode: code });
             // Remove both from queue
             await myRef.remove();
             onMatched(code, 0, null);
           } catch (e) {
-            if (onTimeout) onTimeout("Failed to create room: " + e.message);
+            reportFailure(
+              buildStatus("room_create_fail", "ROOM_CREATE_FAIL", "Unable to create a room for this match.", {
+                details: e && e.message ? e.message : String(e),
+                retryable: true,
+                nextAction: "Tap Retry Search, or use Send to Friends and share your room code.",
+                maxAttempts: maxCreateAttempts,
+              })
+            );
+          } finally {
+            isMatching = false;
           }
         }
         // else: the other player will create the room (their uid is smaller)
       });
 
-      // Timeout after 30s
+      // Timeout after configured window
       const timer = setTimeout(() => {
         if (!cancelled) {
           cleanup();
-          if (onTimeout) onTimeout("No players found");
+          reportFailure(
+            buildStatus("queue_timeout", "QUEUE_TIMEOUT", "No players were available in matchmaking in time.", {
+              retryable: true,
+              timeoutMs,
+              nextAction: "Tap Retry Search now, or use Send to Friends to share an invite link.",
+            })
+          );
         }
-      }, 30000);
+      }, timeoutMs);
 
       function cleanup() {
         cancelled = true;
