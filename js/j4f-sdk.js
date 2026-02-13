@@ -228,12 +228,14 @@ const J4F = (() => {
       const user = authModule.getUser();
       const uid = user ? user.uid : "anon_" + Math.random().toString(36).slice(2, 8);
       const queueRef = db.ref("matchmaking/" + gameId);
-      const myRef = queueRef.child(uid);
+      const myEntryId = queueRef.push().key;
+      const myRef = queueRef.child(myEntryId);
       let cancelled = false;
       let matchListener = null;
 
       // Write ourselves into the queue
       myRef.set({
+        key: myEntryId,
         uid,
         name: user ? user.name : "Player",
         ts: firebase.database.ServerValue.TIMESTAMP,
@@ -265,7 +267,7 @@ const J4F = (() => {
 
         // Find another player (not us) who doesn't have a roomCode yet
         const others = Object.values(queue).filter(
-          (p) => p.uid !== uid && !p.roomCode
+          (p) => p.key !== myEntryId && !p.roomCode
         );
         if (others.length === 0) return;
 
@@ -279,7 +281,7 @@ const J4F = (() => {
           try {
             const { code } = await roomModule.create(gameId, initialState);
             // Tell the opponent which room to join
-            await queueRef.child(opponent.uid).update({ roomCode: code });
+            await queueRef.child(opponent.key).update({ roomCode: code });
             // Remove both from queue
             await myRef.remove();
             onMatched(code, 0, null);
