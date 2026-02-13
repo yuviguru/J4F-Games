@@ -194,8 +194,8 @@ async function doMove(pit){
   }
   S.anim=false;
 
-  // Send move to Firebase if online
-  if(S.isOnline){
+  // Send move to Firebase only if this is OUR move (not a replay of opponent's move)
+  if(S.isOnline&&mover===S.myPlayer){
     J4F.room.sendMoveAndState({pit,mover},{board:S.board,scores:S.scores,cp:S.cp,gameOver:S.gameOver,winner:S.winner}).catch(()=>{});
   }
 
@@ -232,12 +232,8 @@ async function createRoom(){
     S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;
     S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;seenMoveId=0;
     S.screen="lobby";render();
-    // Listen for opponent join
-    J4F.room.onUpdate(data=>{
-      if(data.guest&&data.status==="playing"&&!S.opJoined){
-        S.opJoined=true;S.gameMode="online";S.screen="game";render();startTimer();
-      }
-    });
+    // Listen for opponent join AND moves (setupHostListener handles both)
+    setupHostListener();
   }catch(e){S.onlineErr="Failed: "+(e.message||e);render()}
 }
 
@@ -438,8 +434,6 @@ function renderLobby(){
     <button class="btn" style="margin-top:12px" onclick="resetGame();S.screen='mode';render()">Cancel</button>
   </div>`;
   app.innerHTML=h;
-  // Ensure listener is set up for host
-  setupHostListener();
 }
 
 function renderGame(){
