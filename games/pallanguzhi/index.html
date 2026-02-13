@@ -81,8 +81,14 @@ body{font-family:Georgia,serif;background:linear-gradient(180deg,#2c1810,#1a0e08
 @keyframes handDrop{0%{transform:translateX(-50%) translateY(-8px)}100%{transform:translateX(-50%) translateY(0)}}
 @keyframes handBounce{0%{transform:translateX(-50%) translateY(0) scale(1)}40%{transform:translateX(-50%) translateY(-12px) scale(1.2)}100%{transform:translateX(-50%) translateY(0) scale(1)}}
 @keyframes handGrab{0%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.4)}100%{transform:translateX(-50%) scale(1)}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes popIn{0%{opacity:0;transform:scale(.7)}100%{opacity:1;transform:scale(1)}}
+@keyframes spinSlow{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 .anim-fadeUp{animation:fadeUp .4s ease both}
 .anim-pulse{animation:pulse 1.5s ease infinite}
+.anim-float{animation:floatY 2.2s ease-in-out infinite}
+.anim-pop{animation:popIn .4s ease both}
+.anim-spin{display:inline-block;animation:spinSlow 3.5s linear infinite}
 </style>
 </head>
 <body>
@@ -118,11 +124,12 @@ const S={
   // online
   roomCode:"", joinCode:"", myPlayer:0, isOnline:false, opJoined:false, onlineErr:"",
   pendingMoves:[], turnId:0, animDone:{p0:true,p1:true}, officialTurnId:0,
+  rematchRequestedBy:null, rematchDeadline:null, rematchAcceptedBy:[],
   showRules:false, inviteMsg:"",
   // matchmaking
   searching:false, searchMsg:"",
 };
-let ac=null, timerIv=null, autoTo=null, seenMoveId=0, lastAppliedRemoteMoveId=0, cancelMatchmake=null;
+let ac=null, timerIv=null, autoTo=null, rematchIv=null, seenMoveId=0, lastAppliedRemoteMoveId=0, cancelMatchmake=null;
 
 function sameArr(a,b){return Array.isArray(a)&&Array.isArray(b)&&a.length===b.length&&a.every((v,i)=>v===b[i])}
 
@@ -137,11 +144,85 @@ function syncOnlineTurnState(st={}){
     if(S.turnId===st.turnId&&!S.anim){
       if(!sameArr(S.board,st.board)||!sameArr(S.scores,st.scores)||S.cp!==st.cp||S.gameOver!==!!st.gameOver||S.winner!==st.winner){
         S.board=st.board.slice();S.scores=st.scores.slice();S.cp=st.cp;S.gameOver=!!st.gameOver;S.winner=st.winner??null;
+        if(S.gameOver)S.screen="result";
       }
       S.officialTurnId=st.turnId;
     }
   }
+  if(S.screen==="result"&&!S.gameOver)S.screen="game";
+  S.rematchRequestedBy=Number.isInteger(st.rematchRequestedBy)?st.rematchRequestedBy:null;
+  S.rematchDeadline=typeof st.rematchDeadline==="number"?st.rematchDeadline:null;
+  S.rematchAcceptedBy=Array.isArray(st.rematchAcceptedBy)?st.rematchAcceptedBy.filter(v=>v===0||v===1):[];
+  maybeStartRematchCountdown();
+  maybeStartOnlineRematch();
   if(canAdvanceOnlineTurn()&&S.cp===S.myPlayer&&!timerIv)startTimer();
+}
+
+function clearRematchState(){
+  S.rematchRequestedBy=null;S.rematchDeadline=null;S.rematchAcceptedBy=[];
+  if(rematchIv){clearInterval(rematchIv);rematchIv=null}
+}
+
+function rematchSecondsLeft(){
+  if(!S.rematchDeadline)return 0;
+  return Math.max(0,Math.ceil((S.rematchDeadline-Date.now())/1000));
+}
+
+function maybeStartRematchCountdown(){
+  if(!S.isOnline||S.screen!=="result"||!S.rematchDeadline){if(rematchIv){clearInterval(rematchIv);rematchIv=null}return}
+  if(rematchIv)return;
+  rematchIv=setInterval(()=>{
+    if(!S.rematchDeadline){clearInterval(rematchIv);rematchIv=null;return}
+    if(rematchSecondsLeft()<=0){
+      clearInterval(rematchIv);rematchIv=null;
+      onRematchExpired();
+      return;
+    }
+    render();
+  },250);
+}
+
+function onRematchExpired(){
+  if(!S.isOnline||!S.gameOver)return;
+  const bothAccepted=S.rematchAcceptedBy.includes(0)&&S.rematchAcceptedBy.includes(1);
+  if(bothAccepted)return;
+  clearRematchState();
+  resetGame();
+  S.screen="online";
+  S.onlineErr="Rematch timed out. Start or join a new room.";
+  render();
+}
+
+function maybeStartOnlineRematch(){
+  if(!S.isOnline||!S.gameOver||!S.rematchDeadline)return;
+  if(Date.now()>S.rematchDeadline)return;
+  const bothAccepted=S.rematchAcceptedBy.includes(0)&&S.rematchAcceptedBy.includes(1);
+  if(!bothAccepted||S.myPlayer!==0)return;
+  const nextTurn=S.turnId+1;
+  const nextState={
+    board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,
+    turnId:nextTurn,animDone:{p0:true,p1:true},
+    rematchRequestedBy:null,rematchDeadline:null,rematchAcceptedBy:[],
+  };
+  J4F.room.updateState(nextState).catch(()=>{});
+}
+
+function startOnlineRematchRequest(){
+  if(!S.isOnline||!S.gameOver)return;
+  const deadline=Date.now()+10000;
+  const accepted=[S.myPlayer];
+  S.rematchRequestedBy=S.myPlayer;S.rematchDeadline=deadline;S.rematchAcceptedBy=accepted.slice();
+  maybeStartRematchCountdown();render();
+  J4F.room.updateState({rematchRequestedBy:S.myPlayer,rematchDeadline:deadline,rematchAcceptedBy:accepted}).catch(()=>{});
+}
+
+function acceptOnlineRematch(){
+  if(!S.isOnline||!S.gameOver||!S.rematchDeadline||Date.now()>S.rematchDeadline)return;
+  if(S.rematchAcceptedBy.includes(S.myPlayer))return;
+  S.rematchAcceptedBy=[...S.rematchAcceptedBy,S.myPlayer].sort();
+  render();
+  J4F.room.updateState({rematchAcceptedBy:S.rematchAcceptedBy}).catch(()=>{});
+  maybeStartOnlineRematch();
 }
 
 function markAnimDoneForTurn(turnId){
@@ -220,6 +301,8 @@ async function doMove(pit,meta={}){
     for(let k=0;k<7;k++){S.scores[0]+=S.board[k];S.board[k]=0}
     for(let k=7;k<14;k++){S.scores[1]+=S.board[k];S.board[k]=0}
     S.gameOver=true;S.winner=S.scores[0]>S.scores[1]?0:S.scores[1]>S.scores[0]?1:-1;
+    S.screen="result";
+    clearRematchState();
     stopTimer();
     // Submit to leaderboard
     if(S.isOnline){
@@ -246,6 +329,9 @@ async function doMove(pit,meta={}){
         gameOver:S.gameOver,
         winner:S.winner,
         turnId,
+        rematchRequestedBy:null,
+        rematchDeadline:null,
+        rematchAcceptedBy:[],
       }).catch(()=>{});
       S.officialTurnId=turnId;
     }
@@ -306,7 +392,7 @@ function handlePit(pit){
 async function createRoom(){
   S.onlineErr="";
   try{
-    const{code}=await J4F.room.create("pallanguzhi",{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,turnId:0,animDone:{p0:true,p1:true}});
+    const{code}=await J4F.room.create("pallanguzhi",{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,turnId:0,animDone:{p0:true,p1:true},rematchRequestedBy:null,rematchDeadline:null,rematchAcceptedBy:[]});
     S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;
     S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;S.pendingMoves=[];S.turnId=0;S.animDone={p0:true,p1:true};S.officialTurnId=0;seenMoveId=0;lastAppliedRemoteMoveId=0;
     S.screen="lobby";render();
@@ -341,7 +427,7 @@ function searchOnline(){
   S.searching=true;S.searchMsg="Looking for players...";S.onlineErr="";render();
   cancelMatchmake=J4F.room.matchmake(
     "pallanguzhi",
-    {board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,turnId:0,animDone:{p0:true,p1:true}},
+    {board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,turnId:0,animDone:{p0:true,p1:true},rematchRequestedBy:null,rematchDeadline:null,rematchAcceptedBy:[]},
     (code,player,roomData)=>{
       // Matched!
       cancelMatchmake=null;S.searching=false;
@@ -403,8 +489,9 @@ function setupGuestListener(){
 /* ═══════ RESET ═══════ */
 function resetGame(){
   stopTimer();J4F.room.leave().catch(()=>{});
+  clearRematchState();
   if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
-  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",inviteMsg:"",searching:false,searchMsg:"",pendingMoves:[]});
+  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",inviteMsg:"",searching:false,searchMsg:"",pendingMoves:[],rematchRequestedBy:null,rematchDeadline:null,rematchAcceptedBy:[]});
   S.turnId=0;S.animDone={p0:true,p1:true};S.officialTurnId=0;
   seenMoveId=0;lastAppliedRemoteMoveId=0;
 }
@@ -437,6 +524,62 @@ function render(){
   else if(S.screen==="searching")renderSearching();
   else if(S.screen==="lobby")renderLobby();
   else if(S.screen==="game")renderGame();
+  else if(S.screen==="result")renderResult();
+}
+
+function restartLocalMatch(){
+  const st=S.seedType,gm=S.gameMode,diff=S.aiDiff;
+  resetGame();
+  S.seedType=st;S.gameMode=gm;S.aiDiff=diff;S.screen="game";
+  render();startTimer();
+}
+
+function resultViewData(){
+  const isOn=S.gameMode==="online",isAI=S.gameMode==="ai";
+  const won=isOn?S.winner===S.myPlayer:isAI?S.winner===0:S.winner===0;
+  if(S.winner===-1)return{title:"Draw Game",msg:"Evenly matched!",emoji:"🤝",accent:"#5bc0de",anim:"anim-spin"};
+  if(won)return{title:"Victory!",msg:"Beautiful captures and perfect timing.",emoji:"🏆",accent:"#4ade80",anim:"anim-float"};
+  return{title:"Defeat",msg:"A tough round. Ready for revenge?",emoji:"💥",accent:"#ff8c6b",anim:"anim-pulse"};
+}
+
+function renderResult(){
+  const isOn=S.gameMode==="online",isAI=S.gameMode==="ai";
+  const myScore=isOn?S.scores[S.myPlayer]:S.scores[0],oppScore=isOn?S.scores[1-S.myPlayer]:S.scores[1];
+  const r=resultViewData();
+  const sec=rematchSecondsLeft();
+  const reqByMe=S.rematchRequestedBy===S.myPlayer;
+  const requested=S.rematchRequestedBy===0||S.rematchRequestedBy===1;
+  const iAccepted=S.rematchAcceptedBy.includes(S.myPlayer);
+  const opAccepted=S.rematchAcceptedBy.includes(1-S.myPlayer);
+
+  let onlineActions="";
+  if(isOn){
+    if(!requested){
+      onlineActions=`<button class="btn-primary" onclick="startOnlineRematchRequest()">🔁 Request Rematch</button>`;
+    }else if(sec>0){
+      if(!iAccepted)onlineActions=`<button class="btn-primary" onclick="acceptOnlineRematch()">✅ Accept Rematch</button>`;
+      else onlineActions=`<button class="btn" disabled style="opacity:.8">Waiting for opponent…</button>`;
+    }
+    const who=requested?(reqByMe?"You requested":"Opponent requested"):"No rematch request yet";
+    onlineActions+=`<div style="width:100%;margin-top:8px;padding:10px;border-radius:10px;background:rgba(30,20,10,.45);border:1px solid #6b4530;text-align:center;color:#c4a878;font-size:12px">${who}${requested?` · ⏳ ${sec}s · ${opAccepted?"Opponent accepted":"Awaiting opponent"}`:""}</div>`;
+  }
+
+  app.innerHTML=`<div class="screen" style="padding-top:26px;gap:12px">
+    <div class="title" style="font-size:24px">பல்லாங்குழி</div>
+    <div class="anim-pop" style="width:100%;background:linear-gradient(145deg,#5a3520,#3a2114);border:2px solid ${r.accent};border-radius:18px;padding:18px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.35)">
+      <div class="${r.anim}" style="font-size:56px">${r.emoji}</div>
+      <div style="color:${r.accent};font-size:24px;font-weight:700;margin-top:6px">${r.title}</div>
+      <div style="color:#b99770;font-size:12px;margin-top:4px">${r.msg}</div>
+    </div>
+    <div style="width:100%;background:rgba(0,0,0,.28);border:1px solid #6b4530;border-radius:12px;padding:12px;display:flex;justify-content:space-between;font-size:14px">
+      <div>You: <strong style="color:#daa520">${myScore}</strong></div>
+      <div>${isOn?"Opponent":isAI?"AI":"P2"}: <strong style="color:#daa520">${oppScore}</strong></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;width:100%">
+      ${isOn?onlineActions:`<button class="btn-primary" onclick="restartLocalMatch()">🔁 Play Again</button>`}
+      <button class="btn" onclick="resetGame();S.seedType=SEEDS[${SEEDS.indexOf(S.seedType)}];S.screen='mode';render()">Mode</button>
+    </div>
+  </div>`;
 }
 
 function seedDots(st,count,sz=7){
