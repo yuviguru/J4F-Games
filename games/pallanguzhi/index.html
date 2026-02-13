@@ -117,11 +117,12 @@ const S={
   timeLeft:TURN_TIME, timedOut:false, aiThink:false,
   // online
   roomCode:"", joinCode:"", myPlayer:0, isOnline:false, opJoined:false, onlineErr:"",
+  pendingMoves:[],
   showRules:false, inviteMsg:"",
   // matchmaking
   searching:false, searchMsg:"",
 };
-let ac=null, timerIv=null, autoTo=null, seenMoveId=0, cancelMatchmake=null;
+let ac=null, timerIv=null, autoTo=null, seenMoveId=0, lastAppliedRemoteMoveId=0, cancelMatchmake=null;
 
 function ea(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();if(ac.state==="suspended")ac.resume();return ac;}
 
@@ -201,6 +202,8 @@ async function doMove(pit){
     J4F.room.sendMoveAndState({pit,mover},{board:S.board,scores:S.scores,cp:S.cp,gameOver:S.gameOver,winner:S.winner}).catch(()=>{});
   }
 
+  if(drainPendingRemoteMoves())return;
+
   render();
 
   // Trigger AI or timer
@@ -209,6 +212,27 @@ async function doMove(pit){
     else if(S.isOnline&&S.cp!==S.myPlayer){/* wait for opponent */}
     else{startTimer()}
   }
+}
+
+function enqueueRemoteMove(moveId,mv){
+  if(!mv||mv.mover===S.myPlayer||moveId<=lastAppliedRemoteMoveId)return;
+  if(S.pendingMoves.some(pm=>pm.moveId===moveId))return;
+  S.pendingMoves.push({moveId,pit:mv.pit,mover:mv.mover});
+  S.pendingMoves.sort((a,b)=>a.moveId-b.moveId);
+}
+
+function drainPendingRemoteMoves(){
+  if(S.anim||S.gameOver)return false;
+  while(S.pendingMoves.length){
+    const mv=S.pendingMoves[0];
+    if(mv.moveId<=lastAppliedRemoteMoveId){S.pendingMoves.shift();continue}
+    if(mv.mover===S.myPlayer){S.pendingMoves.shift();continue}
+    S.pendingMoves.shift();
+    lastAppliedRemoteMoveId=mv.moveId;
+    doMove(mv.pit);
+    return true;
+  }
+  return false;
 }
 
 function scheduleAI(){
@@ -234,7 +258,7 @@ async function createRoom(){
   try{
     const{code}=await J4F.room.create("pallanguzhi",{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null});
     S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;
-    S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;seenMoveId=0;
+    S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;S.pendingMoves=[];seenMoveId=0;lastAppliedRemoteMoveId=0;
     S.screen="lobby";render();
     setupHostListener();
   }catch(e){S.onlineErr="Failed: "+(e.message||e);render()}
@@ -255,7 +279,7 @@ async function joinRoom(codeOverride){
     S.roomCode=code;S.myPlayer=1;S.isOnline=true;S.opJoined=true;
     const st=roomData.state||{};
     S.board=st.board||initBoard();S.scores=st.scores||[0,0];S.cp=st.cp||0;
-    S.gameOver=false;S.winner=null;seenMoveId=0;
+    S.gameOver=false;S.winner=null;S.pendingMoves=[];seenMoveId=0;lastAppliedRemoteMoveId=0;
     S.gameMode="online";S.screen="game";render();
     setupGuestListener();
     if(S.cp===S.myPlayer)startTimer();
@@ -272,7 +296,7 @@ function searchOnline(){
       // Matched!
       cancelMatchmake=null;S.searching=false;
       S.roomCode=code;S.myPlayer=player;S.isOnline=true;
-      S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;seenMoveId=0;
+      S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;S.pendingMoves=[];seenMoveId=0;lastAppliedRemoteMoveId=0;
       if(player===0){
         // We created the room — wait for opponent to join
         S.opJoined=false;S.screen="lobby";render();
@@ -306,20 +330,20 @@ function setupHostListener(){
       S.opJoined=true;S.gameMode="online";S.screen="game";render();startTimer();
       return;
     }
-    if(data.moveId>seenMoveId&&!S.anim&&data.lastMove){
-      const mv=data.lastMove;
-      if(mv.mover!==S.myPlayer){seenMoveId=data.moveId;doMove(mv.pit)}
-      else{seenMoveId=data.moveId}
+    if(data.moveId>seenMoveId&&data.lastMove){
+      seenMoveId=data.moveId;
+      enqueueRemoteMove(data.moveId,data.lastMove);
+      drainPendingRemoteMoves();
     }
   });
 }
 
 function setupGuestListener(){
   J4F.room.onUpdate(data=>{
-    if(data.moveId>seenMoveId&&!S.anim&&data.lastMove){
-      const mv=data.lastMove;
-      if(mv.mover!==S.myPlayer){seenMoveId=data.moveId;doMove(mv.pit)}
-      else{seenMoveId=data.moveId}
+    if(data.moveId>seenMoveId&&data.lastMove){
+      seenMoveId=data.moveId;
+      enqueueRemoteMove(data.moveId,data.lastMove);
+      drainPendingRemoteMoves();
     }
   });
 }
@@ -328,8 +352,8 @@ function setupGuestListener(){
 function resetGame(){
   stopTimer();J4F.room.leave().catch(()=>{});
   if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
-  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",inviteMsg:"",searching:false,searchMsg:""});
-  seenMoveId=0;
+  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",inviteMsg:"",searching:false,searchMsg:"",pendingMoves:[]});
+  seenMoveId=0;lastAppliedRemoteMoveId=0;
 }
 
 /* ═══════ SHARE ═══════ */
