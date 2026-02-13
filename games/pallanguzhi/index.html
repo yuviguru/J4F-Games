@@ -15,8 +15,8 @@ body{font-family:Georgia,serif;background:linear-gradient(180deg,#2c1810,#1a0e08
 /* Shared */
 .title{color:#daa520;font-size:28px;font-weight:700;letter-spacing:3px;text-shadow:0 2px 8px rgba(218,165,32,.3)}
 .subtitle{color:#a08060;font-size:12px;letter-spacing:2px}
-.btn{padding:8px 14px;background:rgba(60,30,5,.6);color:#c4a878;border:1px solid #6b4530;border-radius:10px;font:600 11px Georgia,serif;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.btn-primary{padding:9px 18px;background:linear-gradient(135deg,#b8860b,#8b6508);color:#fff;border:none;border-radius:10px;font:700 13px Georgia,serif;cursor:pointer;box-shadow:0 4px 12px rgba(184,134,11,.4)}
+.btn{padding:8px 14px;background:rgba(60,30,5,.6);color:#c4a878;border:1px solid #6b4530;border-radius:10px;font:600 11px Georgia,serif;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:44px}
+.btn-primary{padding:9px 18px;background:linear-gradient(135deg,#b8860b,#8b6508);color:#fff;border:none;border-radius:10px;font:700 13px Georgia,serif;cursor:pointer;box-shadow:0 4px 12px rgba(184,134,11,.4);min-height:44px}
 .btn-wa{padding:12px 20px;background:linear-gradient(135deg,#1a5c2e,#0f3d1e);color:#4ade80;border:2px solid #2a8c4a;border-radius:12px;font:700 14px Georgia,serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
 .btn-copy{padding:12px 20px;background:linear-gradient(135deg,#2a1a4a,#1a0e30);color:#b39ddb;border:2px solid #6b45a0;border-radius:12px;font:700 14px Georgia,serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
 .card{background:linear-gradient(145deg,#5a3520,#4a2818);border:2px solid #6b4530;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;width:100%}
@@ -71,6 +71,21 @@ body{font-family:Georgia,serif;background:linear-gradient(180deg,#2c1810,#1a0e08
 
 /* Rules */
 .rules-box{margin-top:10px;background:rgba(40,20,8,.9);border:1px solid #6b4530;border-radius:12px;padding:12px 14px;max-width:380px;width:100%;font-size:12px;line-height:1.5}
+.game-controls{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center;width:100%;max-width:380px}
+
+@media (orientation:landscape){
+  #app{padding:6px 10px 24px}
+  .screen{max-width:min(98vw,700px);gap:8px}
+  .board,.score-bar,.game-controls,.rules-box{max-width:min(96vw,660px)}
+  .board{padding:8px 7px}
+  .status-bar{min-height:18px;margin-bottom:2px}
+  .seed-counter{margin-top:4px}
+}
+
+@media (max-width:360px){
+  .btn,.btn-primary{padding:8px 10px;font-size:10px}
+  .board{padding:10px 6px}
+}
 
 /* Animations */
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
@@ -128,6 +143,7 @@ const S={
   showRules:false, inviteMsg:"",
   // matchmaking
   searching:false, searchMsg:"", matchmakeStatus:null,
+  isFullscreen:false, fullscreenErr:"",
 };
 let ac=null, timerIv=null, autoTo=null, rematchIv=null, seenMoveId=0, lastAppliedRemoteMoveId=0, cancelMatchmake=null;
 const MATCH_RETRY_MAX=2;
@@ -510,7 +526,7 @@ function resetGame(){
   stopTimer();J4F.room.leave().catch(()=>{});
   clearRematchState();
   if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
-  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",inviteMsg:"",searching:false,searchMsg:"",matchmakeStatus:null,pendingMoves:[],rematchRequestedBy:null,rematchDeadline:null,rematchAcceptedBy:[]});
+  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",inviteMsg:"",searching:false,searchMsg:"",matchmakeStatus:null,pendingMoves:[],rematchRequestedBy:null,rematchDeadline:null,rematchAcceptedBy:[],fullscreenErr:""});
   S.turnId=0;S.animDone={p0:true,p1:true};S.officialTurnId=0;
   seenMoveId=0;lastAppliedRemoteMoveId=0;
 }
@@ -534,6 +550,40 @@ async function shareCopy(code){
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 const $=id=>document.getElementById(id);
 const app=$("app");
+setFullscreenState();
+
+function setFullscreenState(){
+  S.isFullscreen=!!document.fullscreenElement;
+}
+
+async function toggleFullscreen(){
+  S.fullscreenErr="";
+  const root=document.documentElement;
+  if(!document.fullscreenEnabled||!root.requestFullscreen){
+    S.fullscreenErr="Fullscreen isn\'t supported on this browser.";
+    render();
+    return;
+  }
+
+  try{
+    if(document.fullscreenElement){
+      if(document.exitFullscreen)await document.exitFullscreen();
+      return;
+    }
+
+    await root.requestFullscreen({navigationUI:"hide"});
+    if(screen.orientation&&screen.orientation.lock){
+      try{await screen.orientation.lock("landscape")}catch(_){/* ignore */}
+    }
+  }catch(e){
+    S.fullscreenErr=(e&&e.message)?e.message:"Unable to toggle fullscreen.";
+  }finally{
+    setFullscreenState();
+    render();
+  }
+}
+
+document.addEventListener("fullscreenchange",()=>{setFullscreenState();if(S.screen==="game")render();});
 
 /* ═══════ RENDER ═══════ */
 function render(){
@@ -832,13 +882,15 @@ function renderGame(){
   <div class="seed-counter">In play: ${S.board.reduce((a,b)=>a+b,0)} · Captured: ${S.scores[0]+S.scores[1]} · Total: ${TOTAL}</div>
 
   <!-- Buttons -->
-  <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center">
+  <div class="game-controls">
     ${S.gameOver?`<button class="btn-primary" onclick="resetGame();S.seedType=SEEDS[${SEEDS.indexOf(st)}];${isOn?"S.screen='mode'":"S.screen='game';S.gameMode='"+S.gameMode+"';S.aiDiff='"+S.aiDiff+"'"};render();${isOn?"":"startTimer()"}">New Game</button>`:""}
     <button class="btn" onclick="S.showRules=!S.showRules;render()">${S.showRules?"Hide":"Rules"}</button>
     <button class="btn" onclick="resetGame();S.seedType=SEEDS[${SEEDS.indexOf(st)}];S.screen='mode';render()">Mode</button>
     ${!isOn?`<button class="btn" onclick="resetGame();S.screen='select';render()">${st.emoji} Seeds</button>`:""}
     ${!S.gameOver&&!isOn?`<button class="btn" onclick="resetGame();S.seedType=SEEDS[${SEEDS.indexOf(st)}];S.gameMode='${S.gameMode}';S.aiDiff='${S.aiDiff}';S.screen='game';render();startTimer()">Restart</button>`:""}
+    <button class="btn" onclick="toggleFullscreen()">${S.isFullscreen?"🡼 Exit Fullscreen":"⛶ Fullscreen"}</button>
   </div>
+  ${S.fullscreenErr?`<div class="error-box" style="margin-top:6px;max-width:380px">${S.fullscreenErr}</div>`:""}
 
   <!-- Rules -->
   ${S.showRules?`<div class="rules-box">
