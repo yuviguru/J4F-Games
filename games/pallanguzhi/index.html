@@ -254,7 +254,7 @@ async function createRoom(){
   S.onlineErr="";
   try{
     const{code}=await J4F.room.create("pallanguzhi",{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null});
-    S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;
+    S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;S.gameMode="online";
     S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;seenMoveId=0;
     S.screen="lobby";render();
     setupHostListener();
@@ -292,7 +292,7 @@ function searchOnline(){
     (code,player,roomData)=>{
       // Matched!
       cancelMatchmake=null;S.searching=false;
-      S.roomCode=code;S.myPlayer=player;S.isOnline=true;
+      S.roomCode=code;S.myPlayer=player;S.isOnline=true;S.gameMode="online";
       S.board=initBoard();S.scores=[0,0];S.cp=0;S.gameOver=false;S.winner=null;seenMoveId=0;
       if(player===0){
         // We created the room — wait for opponent to join
@@ -380,14 +380,14 @@ function setupGuestListener(){
 function resetGame(){
   stopTimer();stopReconnectTimer();
   if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
-  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",leavePrompt:false,waitingReconnect:false,reconnectLeft:FORFEIT_TIMEOUT,reconnectWinner:null,isLeaving:false,inviteMsg:"",searching:false,searchMsg:""});
+  Object.assign(S,{board:initBoard(),scores:[0,0],cp:0,gameOver:false,winner:null,anim:false,activePit:null,handPit:null,handAct:null,holding:0,capPit:null,timeLeft:TURN_TIME,timedOut:false,aiThink:false,gameMode:null,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",leavePrompt:false,waitingReconnect:false,reconnectLeft:FORFEIT_TIMEOUT,reconnectWinner:null,isLeaving:false,showRules:false,inviteMsg:"",searching:false,searchMsg:""});
   seenMoveId=0;
 }
 
 async function leaveOnlineMatchToMode(){
   if(S.isLeaving)return;
   stopTimer();stopReconnectTimer();
-  S.isLeaving=true;
+  S.isLeaving=true;S.gameMode=null;S.showRules=false;
   try{await J4F.room.leave()}catch(_e){}
   resetGame();
   S.screen='mode';
