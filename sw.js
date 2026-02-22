@@ -8,6 +8,7 @@ const ASSETS = [
   "/assets/icon-192.png",
   "/assets/icon-512.png",
   "/games/pallanguzhi/index.html",
+  "/games/raaja-raani/index.html",
 ];
 
 self.addEventListener("install", (e) => {
