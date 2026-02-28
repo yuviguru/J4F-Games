@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#3a0a0a">
+<title>Ace — J4F</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(180deg,#3a0a0a,#1a0505);color:#e0b0b0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#app{height:100dvh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;align-items:center;padding:12px 10px 100px}
+.title{color:#ff4444;font-size:26px;font-weight:700;letter-spacing:2px;text-shadow:0 2px 8px rgba(255,68,68,.3)}
+.subtitle{color:#a06060;font-size:12px;letter-spacing:2px}
+.btn{padding:8px 14px;background:rgba(60,20,20,.6);color:#e0b0b0;border:1px solid #cc3333;border-radius:10px;font:600 11px -apple-system,sans-serif;cursor:pointer}
+.btn-primary{padding:9px 18px;background:linear-gradient(135deg,#cc3333,#8b0000);color:#fff;border:none;border-radius:10px;font:700 13px -apple-system,sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(204,51,51,.4)}
+.card-ui{background:linear-gradient(145deg,#4a1a1a,#2a0f0f);border:2px solid #cc3333;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;width:100%}
+.error-box{color:#ff6b6b;font-size:12px;font-weight:600;background:rgba(255,50,50,.15);padding:8px 14px;border-radius:8px;border:1px solid rgba(255,50,50,.3);text-align:center;width:100%}
+.screen{width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.btn-wa{padding:12px 20px;background:linear-gradient(135deg,#1a5c2e,#0f3d1e);color:#4ade80;border:2px solid #2a8c4a;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.btn-copy{padding:12px 20px;background:linear-gradient(135deg,#2a1a4a,#1a0e30);color:#b39ddb;border:2px solid #6b45a0;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.join-input{width:100%;max-width:160px;padding:12px;font:800 24px -apple-system,sans-serif;text-align:center;letter-spacing:8px;background:rgba(0,0,0,.3);color:#ff4444;border:2px solid #cc3333;border-radius:10px;outline:none;text-transform:uppercase}
+.room-code-display{background:rgba(0,0,0,.4);border:3px solid #ff4444;border-radius:16px;padding:24px 36px;text-align:center}
+.room-code-text{color:#ff4444;font-size:48px;font-weight:800;letter-spacing:12px}
+.share-row{display:flex;gap:8px;width:100%;max-width:320px}
+.info-box{background:rgba(0,0,0,.3);border:1px solid #cc3333;border-radius:10px;padding:8px 14px;font-size:12px;text-align:center;width:100%}
+.rules-box{margin-top:10px;background:rgba(30,10,10,.9);border:1px solid #cc3333;border-radius:12px;padding:12px 14px;max-width:380px;width:100%;font-size:12px;line-height:1.5}
+.score-bar{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:380px;margin-bottom:6px}
+.score-badge{padding:5px 10px;border-radius:8px;font:700 12px -apple-system,sans-serif;border:2px solid transparent;transition:all .3s}
+.score-badge.on{background:linear-gradient(135deg,#cc3333,#8b0000);color:#fff;border-color:#ff4444}
+.score-badge.off{background:rgba(60,20,20,.6);color:#e0b0b0}
+.timer-ring{position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.timer-ring svg{position:absolute;transform:rotate(-90deg)}
+.timer-num{font-weight:800;z-index:1}
+
+/* Playing cards */
+.playing-card{width:52px;height:76px;border-radius:8px;background:#fff;color:#333;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;cursor:pointer;transition:all .15s;border:2px solid #ddd;flex-shrink:0;position:relative}
+.playing-card.red{color:#cc0000}
+.playing-card.black{color:#333}
+.playing-card.selectable{border-color:#ffd93d;box-shadow:0 0 10px rgba(255,217,61,.5);cursor:pointer}
+.playing-card.selectable:active{transform:scale(.92)}
+.playing-card.facedown{background:linear-gradient(145deg,#8b0000,#4a0000);color:transparent;border-color:#cc3333}
+.playing-card .card-rank{font-size:16px;line-height:1}
+.playing-card .card-suit{font-size:18px;line-height:1}
+.hand-row{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;padding:4px}
+.pile-area{display:flex;align-items:center;justify-content:center;gap:16px;margin:10px 0}
+.pile-card{width:64px;height:92px;border-radius:10px;border:3px solid #ffd93d;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.pile-card.red{color:#cc0000}
+.pile-card.black{color:#333}
+.pile-card .card-rank{font-size:22px}
+.pile-card .card-suit{font-size:24px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes dotBlink{0%,20%{opacity:0}50%{opacity:1}100%{opacity:0}}
+@keyframes timerPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.anim-pulse{animation:pulse 1.5s ease infinite}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/j4f-sdk.js"></script>
+<script>
+/*
+  Ace — Fast card shedding game (like Crazy Eights / UNO simplified)
+  - 2 players, standard 52-card deck
+  - Each gets 7 cards, rest is draw pile
+  - Match top card by suit or rank
+  - Aces are wild (can be played on anything, player picks suit)
+  - First to empty hand wins
+*/
+const GAME_ID="ace";
+const TURN_TIME=15,FORFEIT_TIMEOUT=20;
+const SUITS=["♠","♥","♦","♣"];
+const RANKS=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+const SUIT_COLORS={"♠":"black","♥":"red","♦":"red","♣":"black"};
+
+function makeDeck(){const d=[];SUITS.forEach(s=>RANKS.forEach(r=>d.push({r,s})));return d}
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
+function cardMatch(card,top,activeSuit){
+  if(card.r==="A")return true; // Ace is wild
+  if(card.r===top.r)return true;
+  if(card.s===(activeSuit||top.s))return true;
+  return false;
+}
+
+function initGame(){
+  const deck=shuffle(makeDeck());
+  const hands=[[],[]];
+  for(let i=0;i<7;i++){hands[0].push(deck.pop());hands[1].push(deck.pop())}
+  // Find a non-Ace starting card
+  let topCard=deck.pop();
+  while(topCard.r==="A"){deck.unshift(topCard);topCard=deck.pop()}
+  return{hands,drawPile:deck,discardPile:[topCard],activeSuit:null,cp:0,gameOver:false,winner:null,mustDraw:false,pickingSuit:false};
+}
+
+const S={
+  screen:"mode",gameMode:null,aiDiff:"medium",
+  ...initGame(),
+  timeLeft:TURN_TIME,timedOut:false,aiThink:false,anim:false,
+  roomCode:"",joinCode:"",myPlayer:0,isOnline:false,opJoined:false,onlineErr:"",
+  leavePrompt:false,waitingReconnect:false,reconnectLeft:FORFEIT_TIMEOUT,reconnectWinner:null,isLeaving:false,
+  showRules:false,inviteMsg:"",searching:false,searchMsg:"",
+};
+let timerIv=null,autoTo=null,seenMoveId=0,cancelMatchmake=null,reconnectIv=null;
+
+function resetState(){
+  stopTimer();stopReconnectTimer();
+  if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
+  const init=initGame();
+  Object.assign(S,init,{timeLeft:TURN_TIME,timedOut:false,aiThink:false,anim:false,
+    gameMode:null,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",
+    leavePrompt:false,waitingReconnect:false,reconnectLeft:FORFEIT_TIMEOUT,reconnectWinner:null,isLeaving:false,
+    showRules:false,inviteMsg:"",searching:false,searchMsg:""});
+  seenMoveId=0;
+}
+
+function topCard(){return S.discardPile[S.discardPile.length-1]}
+
+function playCard(playerIdx,cardIdx){
+  if(S.gameOver||S.pickingSuit)return;
+  const card=S.hands[playerIdx][cardIdx];
+  if(!cardMatch(card,topCard(),S.activeSuit))return;
+
+  S.hands[playerIdx].splice(cardIdx,1);
+  S.discardPile.push(card);
+  S.activeSuit=null;
+  stopTimer();
+
+  if(card.r==="A"){
+    // Pick suit
+    if(playerIdx===1&&(S.gameMode==="ai")){
+      // AI picks most common suit in hand
+      const counts={};S.hands[1].forEach(c=>{counts[c.s]=(counts[c.s]||0)+1});
+      let best="♠",bestC=0;Object.entries(counts).forEach(([s,c])=>{if(c>bestC){bestC=c;best=s}});
+      S.activeSuit=best;
+    }else if(S.hands[playerIdx].length>0){
+      S.pickingSuit=true;render();return;
+    }
+  }
+
+  finishTurn(playerIdx);
+}
+
+function pickSuit(suit){
+  S.activeSuit=suit;S.pickingSuit=false;
+  finishTurn(S.cp);
+}
+
+function drawCard(){
+  if(S.gameOver||S.pickingSuit)return;
+  if(S.drawPile.length===0){
+    // Reshuffle discard into draw
+    const top=S.discardPile.pop();
+    S.drawPile=shuffle(S.discardPile);
+    S.discardPile=[top];
+  }
+  if(S.drawPile.length>0){
+    S.hands[S.cp].push(S.drawPile.pop());
+  }
+  stopTimer();
+  finishTurn(S.cp);
+}
+
+function finishTurn(playerIdx){
+  // Check win
+  if(S.hands[playerIdx].length===0){
+    S.gameOver=true;S.winner=playerIdx;
+    if(S.isOnline){const r=S.winner===S.myPlayer?"win":"loss";J4F.leaderboard.submit(GAME_ID,r).catch(()=>{});J4F.room.finish(S.winner).catch(()=>{})}
+    else if(S.gameMode==="ai"){J4F.leaderboard.submit(GAME_ID,S.winner===0?"win":"loss").catch(()=>{})}
+  }
+
+  if(!S.gameOver){
+    S.cp=1-playerIdx;
+    if(S.gameMode==="ai"&&S.cp===1)scheduleAI();
+    else if(S.isOnline&&S.cp!==S.myPlayer){}
+    else startTimer();
+  }
+
+  if(S.isOnline&&playerIdx===S.myPlayer){
+    J4F.room.sendMoveAndState({action:"play"},{hands:S.hands,drawPile:S.drawPile,discardPile:S.discardPile,activeSuit:S.activeSuit,cp:S.cp,gameOver:S.gameOver,winner:S.winner}).catch(()=>{});
+  }
+  render();
+}
+
+function scheduleAI(){
+  S.aiThink=true;render();
+  setTimeout(()=>{
+    S.aiThink=false;
+    const hand=S.hands[1];
+    const top=topCard();
+    // Find playable cards
+    const playable=[];
+    hand.forEach((c,i)=>{if(cardMatch(c,top,S.activeSuit))playable.push(i)});
+    if(playable.length>0){
+      // Play a card (prefer non-Ace, save Aces)
+      let pick=playable[0];
+      if(S.aiDiff!=="easy"){
+        const nonAce=playable.filter(i=>hand[i].r!=="A");
+        if(nonAce.length>0)pick=nonAce[0];
+      }
+      playCard(1,pick);
+    }else{
+      drawCard();
+    }
+  },600+Math.random()*400);
+}
+
+function autoMove(){if(S.gameOver)return;drawCard()}
+
+/* ═══ TIMER ═══ */
+function startTimer(){
+  stopTimer();S.timeLeft=TURN_TIME;S.timedOut=false;
+  let t=TURN_TIME;
+  timerIv=setInterval(()=>{t--;S.timeLeft=t;if(t<=0){stopTimer();S.timedOut=true;autoTo=setTimeout(autoMove,600)}render()},1000);
+}
+function stopTimer(){if(timerIv){clearInterval(timerIv);timerIv=null}if(autoTo){clearTimeout(autoTo);autoTo=null}}
+function stopReconnectTimer(){if(reconnectIv){clearInterval(reconnectIv);reconnectIv=null}}
+function clearReconnectWait(){stopReconnectTimer();S.waitingReconnect=false;S.reconnectLeft=FORFEIT_TIMEOUT;S.reconnectWinner=null}
+function startReconnectTimer(winner){
+  if(S.gameOver||S.waitingReconnect)return;
+  S.waitingReconnect=true;S.reconnectWinner=winner;S.reconnectLeft=FORFEIT_TIMEOUT;stopTimer();stopReconnectTimer();
+  reconnectIv=setInterval(()=>{S.reconnectLeft--;if(S.reconnectLeft<=0){stopReconnectTimer();S.waitingReconnect=false;S.gameOver=true;S.winner=winner;J4F.room.finish(winner).catch(()=>{})}render()},1000);
+}
+
+/* ═══ ONLINE ═══ */
+async function createRoom(){
+  S.onlineErr="";
+  try{
+    const g=initGame();Object.assign(S,g);
+    const{code}=await J4F.room.create(GAME_ID,{hands:S.hands,drawPile:S.drawPile,discardPile:S.discardPile,activeSuit:null,cp:0,gameOver:false,winner:null});
+    S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;S.gameMode="online";seenMoveId=0;S.screen="lobby";render();setupHostListener();
+  }catch(e){S.onlineErr="Failed: "+(e.message||e);render()}
+}
+async function joinRoom(codeOverride){
+  S.onlineErr="";const code=(codeOverride||S.joinCode).toUpperCase().trim();
+  if(code.length!==4){S.onlineErr="Enter a 4-letter code";render();return}
+  try{
+    const{roomData}=await J4F.room.join(code);
+    S.roomCode=code;S.myPlayer=1;S.isOnline=true;S.opJoined=true;
+    const st=roomData.state||{};
+    if(st.hands)S.hands=st.hands;if(st.drawPile)S.drawPile=st.drawPile;if(st.discardPile)S.discardPile=st.discardPile;
+    S.activeSuit=st.activeSuit;S.cp=st.cp||0;S.gameOver=false;seenMoveId=0;
+    S.gameMode="online";S.screen="game";render();setupGuestListener();if(S.cp===S.myPlayer)startTimer();
+  }catch(e){S.onlineErr=e.message||"Failed";render()}
+}
+function searchOnline(){
+  S.searching=true;S.onlineErr="";render();
+  const g=initGame();Object.assign(S,g);
+  cancelMatchmake=J4F.room.matchmake(GAME_ID,{hands:S.hands,drawPile:S.drawPile,discardPile:S.discardPile,activeSuit:null,cp:0,gameOver:false,winner:null},
+    (code,player,roomData)=>{
+      cancelMatchmake=null;S.searching=false;S.roomCode=code;S.myPlayer=player;S.isOnline=true;S.gameMode="online";seenMoveId=0;
+      if(player===0){S.opJoined=false;S.screen="lobby";render();setupHostListener()}
+      else{S.opJoined=true;const st=roomData?.state||{};if(st.hands)S.hands=st.hands;if(st.drawPile)S.drawPile=st.drawPile;if(st.discardPile)S.discardPile=st.discardPile;S.cp=st.cp||0;S.screen="game";render();setupGuestListener();if(S.cp===S.myPlayer)startTimer()}
+    },
+    (msg)=>{cancelMatchmake=null;S.searching=false;S.onlineErr=msg;S.screen="online";render()}
+  );
+}
+function cancelSearch(){if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}S.searching=false;render()}
+function handlePresenceUpdate(data){
+  if(!S.isOnline||S.gameOver||!S.opJoined||S.screen!=="game")return;
+  const me=S.myPlayer===0?"host":"guest",opp=S.myPlayer===0?"guest":"host";
+  if(!data?.presence?.[me]?.online)return;
+  if(!data?.presence?.[opp]?.online)startReconnectTimer(S.myPlayer);else if(S.waitingReconnect)clearReconnectWait();
+}
+function setupHostListener(){
+  J4F.room.onUpdate(data=>{
+    if(S.isLeaving)return;
+    if(!S.opJoined&&data.guest&&data.status==="playing"){S.opJoined=true;S.screen="game";render();startTimer();return}
+    if(data.status==="finished"&&typeof data.winner==="number"&&!S.gameOver){clearReconnectWait();S.gameOver=true;S.winner=data.winner;stopTimer();render();return}
+    handlePresenceUpdate(data);
+    if(data.moveId>seenMoveId&&data.state){seenMoveId=data.moveId;Object.assign(S,{hands:data.state.hands,drawPile:data.state.drawPile,discardPile:data.state.discardPile,activeSuit:data.state.activeSuit,cp:data.state.cp,gameOver:data.state.gameOver||false,winner:data.state.winner});if(S.gameOver)stopTimer();else if(S.cp===S.myPlayer)startTimer();render()}
+  });
+}
+function setupGuestListener(){
+  J4F.room.onUpdate(data=>{
+    if(S.isLeaving)return;
+    if(data.status==="finished"&&typeof data.winner==="number"&&!S.gameOver){clearReconnectWait();S.gameOver=true;S.winner=data.winner;stopTimer();render();return}
+    handlePresenceUpdate(data);
+    if(data.moveId>seenMoveId&&data.state){seenMoveId=data.moveId;Object.assign(S,{hands:data.state.hands,drawPile:data.state.drawPile,discardPile:data.state.discardPile,activeSuit:data.state.activeSuit,cp:data.state.cp,gameOver:data.state.gameOver||false,winner:data.state.winner});if(S.gameOver)stopTimer();else if(S.cp===S.myPlayer)startTimer();render()}
+  });
+}
+async function leaveOnlineMatchToMode(){
+  if(S.isLeaving)return;S.isLeaving=true;stopTimer();stopReconnectTimer();
+  try{await J4F.room.leave()}catch(e){}
+  resetState();S.screen="mode";S.isLeaving=false;render();
+}
+function shareWA(code){const base=window.location.origin+"/games/ace/";const url=code?base+"?room="+code:base;J4F.share.whatsapp(code?"🂡 Join my Ace game!\nPlay: "+url:"🂡 Let's play Ace!\nPlay: "+url)}
+async function shareCopy(code){const base=window.location.origin+"/games/ace/";const url=code?base+"?room="+code:base;const ok=await J4F.share.copy("Join my Ace game!\n"+url);S.inviteMsg=ok?"Copied!":"Failed";render();setTimeout(()=>{S.inviteMsg="";render()},2000)}
+
+/* ═══ RENDER ═══ */
+const app=document.getElementById("app");
+function render(){
+  if(S.screen==="mode")renderMode();
+  else if(S.screen==="online")renderOnline();
+  else if(S.screen==="searching")renderSearching();
+  else if(S.screen==="lobby")renderLobby();
+  else if(S.screen==="game")renderGame();
+}
+
+function renderMode(){
+  const diffs=[{id:"easy",l:"Easy",e:"😊",d:"AI plays randomly",c:"#4CAF50"},{id:"medium",l:"Medium",e:"🧠",d:"AI saves wilds",c:"#FF9800"},{id:"hard",l:"Hard",e:"🔥",d:"AI plays smart",c:"#f44336"}];
+  let h=`<div class="screen" style="padding-top:20px">
+    <div class="title">🂡 ஏஸ்</div><div class="subtitle">ACE</div>
+    <a href="/" style="color:#ff4444;font-size:11px;text-decoration:none;margin-bottom:4px">← J4F Home</a>
+    <p style="font-size:13px;text-align:center">Match cards by suit or rank. Aces are wild!</p>
+    <div class="card-ui" onclick="resetState();S.gameMode='pvp';S.screen='game';Object.assign(S,initGame());render();startTimer()">
+      <div style="font-size:32px">👥</div><div style="flex:1"><div style="color:#ff4444;font-weight:700;font-size:15px">Local 2 Player</div><div style="color:#a06060;font-size:11px">Same device · ⏱️ ${TURN_TIME}s turns</div></div>
+    </div>
+    <div class="card-ui" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.onlineErr='';S.joinCode='';S.screen='online';render()">
+      <div style="font-size:32px">🌐</div><div style="flex:1"><div style="color:#5bc0de;font-weight:700;font-size:15px">Online Multiplayer</div><div style="color:#7ab8d4;font-size:11px">Play with a friend</div></div>
+    </div>
+    <p style="font-size:13px;font-weight:600;margin:8px 0 0">🤖 Play vs AI</p>`;
+  diffs.forEach(d=>{h+=`<div class="card-ui" onclick="resetState();S.gameMode='ai';S.aiDiff='${d.id}';Object.assign(S,initGame());S.screen='game';render();startTimer()"><div style="font-size:26px">${d.e}</div><div style="flex:1"><div style="color:${d.c};font-weight:700;font-size:14px">${d.l}</div><div style="color:#a06060;font-size:11px">${d.d}</div></div></div>`});
+  h+=`</div>`;app.innerHTML=h;
+}
+function renderOnline(){
+  let h=`<div class="screen" style="padding-top:20px;justify-content:center">
+    <div class="title" style="font-size:24px">🂡 Ace</div>
+    <p style="color:#5bc0de;font-size:15px;font-weight:600">🌐 Online Play</p>
+    <button class="card-ui" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.screen='searching';searchOnline()"><div style="font-size:28px">🔍</div><div style="flex:1"><div style="color:#5bc0de;font-weight:700">Search Online</div></div></button>
+    <button class="card-ui" style="background:linear-gradient(145deg,#1a4a2a,#0f3018);border-color:#2a8c4a" onclick="createRoom()"><div style="font-size:28px">👫</div><div style="flex:1"><div style="color:#4ade80;font-weight:700">Send to Friends</div></div></button>
+    <div style="color:#cc3333;font-size:11px;letter-spacing:2px;margin:4px">── HAVE A CODE? ──</div>
+    <div style="width:100%;background:rgba(0,0,0,.3);border:2px solid #cc3333;border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px;justify-content:center">
+      <input class="join-input" type="text" maxlength="4" placeholder="ABCD" style="max-width:120px;padding:8px;font-size:20px" value="${S.joinCode}" oninput="S.joinCode=this.value.toUpperCase()">
+      <button class="btn-primary" onclick="joinRoom()">Join</button>
+    </div>
+    ${S.onlineErr?`<div class="error-box">⚠️ ${S.onlineErr}</div>`:""}
+    <button class="btn" onclick="S.screen='mode';render()">← Back</button>
+  </div>`;app.innerHTML=h;
+}
+function renderSearching(){app.innerHTML=`<div class="screen" style="padding-top:40px;align-items:center"><div class="title" style="font-size:24px">🂡 Ace</div><div style="font-size:48px;margin:20px">🔍</div><p style="color:#5bc0de;font-size:16px;font-weight:700">Searching...</p><div class="anim-pulse" style="color:#7ab8d4;font-size:14px">Looking for players<span style="display:inline-flex;gap:2px"><span style="animation:dotBlink 1.4s ease infinite">.</span><span style="animation:dotBlink 1.4s ease infinite .2s">.</span><span style="animation:dotBlink 1.4s ease infinite .4s">.</span></span></div><button class="btn" style="margin-top:20px" onclick="cancelSearch();S.screen='online';render()">Cancel</button></div>`}
+function renderLobby(){app.innerHTML=`<div class="screen" style="padding-top:20px;align-items:center"><div class="title" style="font-size:24px">🂡 Ace</div><div class="room-code-display"><div style="color:#a06060;font-size:11px;letter-spacing:2px;margin-bottom:6px">ROOM CODE</div><div class="room-code-text">${S.roomCode}</div></div><div class="anim-pulse" style="color:#5bc0de;font-size:14px">Waiting for opponent...</div><div class="share-row" style="margin-top:12px"><button class="btn-wa" style="flex:1;padding:10px;font-size:12px" onclick="shareWA('${S.roomCode}')">💬 WhatsApp</button><button class="btn-copy" style="flex:1;padding:10px;font-size:12px" onclick="shareCopy('${S.roomCode}')">📋 Copy${S.inviteMsg?" ✓":""}</button></div><button class="btn" style="margin-top:12px" onclick="leaveOnlineMatchToMode()">Cancel</button></div>`}
+
+function renderGame(){
+  const isAI=S.gameMode==="ai",isOn=S.gameMode==="online";
+  const myTurn=isOn?S.cp===S.myPlayer:(isAI?S.cp===0:true);
+  const showTimer=!S.gameOver&&!S.waitingReconnect&&myTurn&&!(isAI&&S.cp===1)&&!S.pickingSuit;
+
+  const p0Label=isOn?(S.myPlayer===0?"You":"Opponent"):isAI?"You":"P1";
+  const p1Label=isOn?(S.myPlayer===1?"You":"Opponent"):isAI?"AI":"P2";
+
+  let turnText="";
+  if(S.gameOver){
+    if(isOn)turnText=S.winner===S.myPlayer?"You Win! 🎉":"You Lost 😤";
+    else if(isAI)turnText=S.winner===0?"You Win! 🎉":"AI Wins 😤";
+    else turnText=(S.winner===0?"P1":"P2")+" Wins! 🎉";
+  }else{
+    turnText=(S.cp===0?p0Label:p1Label)+"'s Turn";
+  }
+
+  let timerHTML="";
+  if(showTimer){
+    const r=18,circ=2*Math.PI*r,off=circ*(1-S.timeLeft/TURN_TIME);
+    const col=S.timeLeft<=3?"#ff4444":S.timeLeft<=5?"#ff8c00":"#ff4444";
+    timerHTML=`<div class="timer-ring"><svg width="44" height="44"><circle cx="22" cy="22" r="${r}" fill="none" stroke="rgba(100,20,20,.3)" stroke-width="3.5"/><circle cx="22" cy="22" r="${r}" fill="none" stroke="${col}" stroke-width="3.5" stroke-dasharray="${circ}" stroke-dashoffset="${off}" stroke-linecap="round" style="transition:stroke-dashoffset .3s"/></svg><span class="timer-num" style="font-size:16px;color:${col}">${S.timeLeft}</span></div>`;
+  }else if(S.aiThink){timerHTML=`<div class="anim-pulse" style="color:#ff4444;font-size:12px">🤖 Thinking...</div>`}
+  else if(S.gameOver){timerHTML=`<div style="font-size:22px">🏆</div>`}
+
+  const top=topCard();
+  const topColor=SUIT_COLORS[top.s];
+
+  // Opponent hand (face down)
+  const oppIdx=isOn?1-S.myPlayer:1;
+  const myIdx=isOn?S.myPlayer:0;
+  let oppHTML=`<div style="text-align:center;font-size:11px;color:#a06060;margin-bottom:4px">${oppIdx===0?p0Label:p1Label} · ${S.hands[oppIdx].length} cards</div><div class="hand-row">`;
+  for(let i=0;i<S.hands[oppIdx].length;i++){
+    oppHTML+=`<div class="playing-card facedown" style="width:30px;height:44px"><span style="font-size:12px">🂠</span></div>`;
+  }
+  oppHTML+=`</div>`;
+
+  // Pile
+  let pileHTML=`<div class="pile-area">
+    <div style="text-align:center"><div class="playing-card facedown" style="width:52px;height:76px;cursor:${myTurn&&!S.pickingSuit?"pointer":"default"}" onclick="${myTurn&&!S.pickingSuit?"drawCard()":""}"><span style="font-size:14px;color:#fff">${S.drawPile.length}</span></div><div style="font-size:10px;color:#a06060;margin-top:2px">Draw</div></div>
+    <div style="text-align:center"><div class="pile-card ${topColor}"><span class="card-rank">${top.r}</span><span class="card-suit">${top.s}</span></div>
+    ${S.activeSuit?`<div style="font-size:10px;color:#ffd93d;margin-top:2px">Active: ${S.activeSuit}</div>`:`<div style="font-size:10px;color:#a06060;margin-top:2px">Discard</div>`}</div>
+  </div>`;
+
+  // My hand
+  let myHTML=`<div style="text-align:center;font-size:11px;color:#a06060;margin-top:4px">${myIdx===0?p0Label:p1Label} · ${S.hands[myIdx].length} cards</div><div class="hand-row">`;
+  const myHand=S.hands[myIdx];
+  for(let i=0;i<myHand.length;i++){
+    const c=myHand[i];
+    const color=SUIT_COLORS[c.s];
+    const canPlay=myTurn&&!S.pickingSuit&&cardMatch(c,top,S.activeSuit);
+    myHTML+=`<div class="playing-card ${color}${canPlay?" selectable":""}" onclick="${canPlay?`playCard(${myIdx},${i})`:""}"><span class="card-rank">${c.r}</span><span class="card-suit">${c.s}</span></div>`;
+  }
+  myHTML+=`</div>`;
+
+  // Suit picker
+  let suitPickerHTML="";
+  if(S.pickingSuit){
+    suitPickerHTML=`<div class="info-box" style="border-color:#ffd93d">
+      <p style="font-weight:700;color:#ffd93d;margin-bottom:8px">Pick a suit:</p>
+      <div style="display:flex;gap:12px;justify-content:center">
+        ${SUITS.map(s=>`<button style="font-size:32px;background:none;border:2px solid #ffd93d;border-radius:10px;padding:8px 12px;cursor:pointer;color:${SUIT_COLORS[s]==="red"?"#cc0000":"#fff"}" onclick="pickSuit('${s}')">${s}</button>`).join("")}
+      </div>
+    </div>`;
+  }
+
+  let h=`
+  <div style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:380px;margin-bottom:4px">
+    <div><div class="title" style="font-size:20px">🂡 Ace</div><div style="color:#a06060;font-size:9px">${isOn?"🌐 "+S.roomCode:isAI?"AI ("+S.aiDiff+")":"PvP"}</div></div>
+    ${timerHTML}
+  </div>
+  ${S.waitingReconnect?`<div style="color:#ff8c00;font-size:11px;font-weight:700;text-align:center">⚠️ Opponent disconnected · ${S.reconnectLeft}s</div>`:""}
+  <div class="score-bar">
+    <div class="score-badge ${S.cp===0&&!S.gameOver?"on":"off"}">${p0Label}: ${S.hands[0].length}🃏</div>
+    <div style="font-size:12px;${S.gameOver?"color:#ff4444;font-weight:700":""}">${turnText}</div>
+    <div class="score-badge ${S.cp===1&&!S.gameOver?"on":"off"}">${p1Label}: ${S.hands[1].length}🃏</div>
+  </div>
+  ${oppHTML}
+  ${pileHTML}
+  ${suitPickerHTML}
+  ${myHTML}
+  <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center">
+    ${S.gameOver?`<button class="btn-primary" onclick="${isOn?"leaveOnlineMatchToMode()":"resetState();S.gameMode='"+S.gameMode+"';S.aiDiff='"+S.aiDiff+"';Object.assign(S,initGame());S.screen='game';render();startTimer()"}">New Game</button>`:""}
+    <button class="btn" onclick="S.showRules=!S.showRules;render()">${S.showRules?"Hide":"Rules"}</button>
+    ${!isOn?`<button class="btn" onclick="resetState();S.screen='mode';render()">Mode</button>`:`<button class="btn" onclick="leaveOnlineMatchToMode()">Leave</button>`}
+  </div>
+  ${S.showRules?`<div class="rules-box">
+    <p style="font-weight:700;color:#ff4444;margin-bottom:6px">How to Play Ace</p>
+    <p style="margin-bottom:5px">Each player gets 7 cards. Match the top discard by suit or rank.</p>
+    <p style="margin-bottom:5px">🂡 Aces are WILD — play on anything and pick the next suit!</p>
+    <p style="margin-bottom:5px">Can't play? Draw a card from the pile.</p>
+    <p>First to empty their hand wins! 🏆</p>
+  </div>`:""}`;
+  app.innerHTML=h;
+}
+
+/* ═══ INIT ═══ */
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  const roomCode=params.get("room");
+  if(roomCode&&roomCode.length===4){S.joinCode=roomCode.toUpperCase();S.screen="online";render();setTimeout(()=>joinRoom(roomCode),500);window.history.replaceState({},"",window.location.pathname);return}
+  render();
+})();
+</script>
+</body>
+</html>

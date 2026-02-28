@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#3a2a10">
+<title>Mangatha — J4F</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(180deg,#3a2a10,#1a1508);color:#e0c890;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#app{height:100dvh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;align-items:center;padding:12px 10px 100px}
+.title{color:#ffd93d;font-size:26px;font-weight:700;letter-spacing:2px;text-shadow:0 2px 8px rgba(255,217,61,.3)}
+.subtitle{color:#a09060;font-size:12px;letter-spacing:2px}
+.btn{padding:8px 14px;background:rgba(60,40,10,.6);color:#e0c890;border:1px solid #c49a46;border-radius:10px;font:600 11px -apple-system,sans-serif;cursor:pointer}
+.btn-primary{padding:9px 18px;background:linear-gradient(135deg,#c49a46,#8b6508);color:#fff;border:none;border-radius:10px;font:700 13px -apple-system,sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(196,154,70,.4)}
+.card-ui{background:linear-gradient(145deg,#4a3a1a,#2a1f0f);border:2px solid #c49a46;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;width:100%}
+.error-box{color:#ff6b6b;font-size:12px;font-weight:600;background:rgba(255,50,50,.15);padding:8px 14px;border-radius:8px;border:1px solid rgba(255,50,50,.3);text-align:center;width:100%}
+.screen{width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.btn-wa{padding:12px 20px;background:linear-gradient(135deg,#1a5c2e,#0f3d1e);color:#4ade80;border:2px solid #2a8c4a;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.btn-copy{padding:12px 20px;background:linear-gradient(135deg,#2a1a4a,#1a0e30);color:#b39ddb;border:2px solid #6b45a0;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.join-input{width:100%;max-width:160px;padding:12px;font:800 24px -apple-system,sans-serif;text-align:center;letter-spacing:8px;background:rgba(0,0,0,.3);color:#ffd93d;border:2px solid #c49a46;border-radius:10px;outline:none;text-transform:uppercase}
+.room-code-display{background:rgba(0,0,0,.4);border:3px solid #ffd93d;border-radius:16px;padding:24px 36px;text-align:center}
+.room-code-text{color:#ffd93d;font-size:48px;font-weight:800;letter-spacing:12px}
+.share-row{display:flex;gap:8px;width:100%;max-width:320px}
+.info-box{background:rgba(0,0,0,.3);border:1px solid #c49a46;border-radius:10px;padding:8px 14px;font-size:12px;text-align:center;width:100%}
+.rules-box{margin-top:10px;background:rgba(20,15,5,.9);border:1px solid #c49a46;border-radius:12px;padding:12px 14px;max-width:380px;width:100%;font-size:12px;line-height:1.5}
+.score-bar{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:380px;margin-bottom:6px}
+.score-badge{padding:5px 10px;border-radius:8px;font:700 12px -apple-system,sans-serif;border:2px solid transparent;transition:all .3s}
+.score-badge.on{background:linear-gradient(135deg,#c49a46,#8b6508);color:#fff;border-color:#ffd93d}
+.score-badge.off{background:rgba(60,40,10,.6);color:#e0c890}
+
+/* Cards */
+.playing-card{width:64px;height:92px;border-radius:10px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;cursor:pointer;transition:all .2s;border:3px solid #ddd;flex-shrink:0}
+.playing-card.red{color:#cc0000}
+.playing-card.black{color:#333}
+.playing-card.facedown{background:linear-gradient(145deg,#8b6508,#4a3510);color:transparent;border-color:#c49a46}
+.playing-card.selectable{border-color:#ffd93d;box-shadow:0 0 12px rgba(255,217,61,.5);cursor:pointer}
+.playing-card.selectable:active{transform:scale(.93)}
+.playing-card.winner{border-color:#4ade80;box-shadow:0 0 16px rgba(74,222,128,.5)}
+.playing-card .card-rank{font-size:20px;line-height:1}
+.playing-card .card-suit{font-size:22px;line-height:1}
+.card-row{display:flex;gap:12px;justify-content:center;margin:10px 0}
+.bet-area{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:8px 0}
+.bet-btn{padding:8px 16px;border-radius:10px;font:700 14px -apple-system,sans-serif;cursor:pointer;border:2px solid;transition:all .15s}
+.bet-btn:active{transform:scale(.95)}
+.result-box{background:rgba(0,0,0,.4);border:2px solid #ffd93d;border-radius:14px;padding:16px;text-align:center;width:100%;max-width:350px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes dotBlink{0%,20%{opacity:0}50%{opacity:1}100%{opacity:0}}
+@keyframes cardFlip{0%{transform:scaleX(1)}50%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+.anim-pulse{animation:pulse 1.5s ease infinite}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/j4f-sdk.js"></script>
+<script>
+/*
+  Mangatha (Maang Patta) — Indian 3-card guessing/betting game
+  - Dealer deals 3 face-down cards
+  - One is revealed (the "shown" card)
+  - Player bets on which of the remaining 2 hidden cards is higher
+  - Higher card wins; if equal, dealer wins
+  - Play multiple rounds, track score with virtual chips
+*/
+const GAME_ID="mangatha";
+const SUITS=["♠","♥","♦","♣"];
+const RANKS=["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
+const RANK_VAL={};RANKS.forEach((r,i)=>RANK_VAL[r]=i+2);
+const SUIT_COLORS={"♠":"black","♥":"red","♦":"red","♣":"black"};
+
+function makeDeck(){const d=[];SUITS.forEach(s=>RANKS.forEach(r=>d.push({r,s})));return d}
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
+function cardVal(c){return RANK_VAL[c.r]}
+
+const S={
+  screen:"mode",gameMode:null,
+  cards:[null,null,null], // 3 dealt cards
+  shownIdx:1, // middle card is shown
+  revealed:false,
+  playerPick:-1, // 0=left, 2=right (not the shown one)
+  scores:[1000,1000], // chips
+  bet:100,
+  round:0,
+  phase:"betting", // betting, picking, result
+  lastResult:null, // "win" or "lose"
+  gameOver:false,winner:null,
+  // Online
+  roomCode:"",joinCode:"",myPlayer:0,isOnline:false,opJoined:false,onlineErr:"",
+  leavePrompt:false,isLeaving:false,showRules:false,inviteMsg:"",searching:false,searchMsg:"",
+};
+let seenMoveId=0,cancelMatchmake=null;
+
+function dealCards(){
+  const deck=shuffle(makeDeck());
+  S.cards=[deck[0],deck[1],deck[2]];
+  S.shownIdx=1;S.revealed=false;S.playerPick=-1;S.phase="picking";S.lastResult=null;
+}
+
+function pickCard(idx){
+  if(S.phase!=="picking"||idx===S.shownIdx||S.revealed)return;
+  S.playerPick=idx;
+  S.revealed=true;
+  S.phase="result";
+
+  const otherIdx=idx===0?2:0;
+  const picked=S.cards[idx];
+  const other=S.cards[otherIdx];
+
+  if(cardVal(picked)>cardVal(other)){
+    S.lastResult="win";
+    S.scores[0]+=S.bet;S.scores[1]-=S.bet;
+  }else{
+    S.lastResult="lose";
+    S.scores[0]-=S.bet;S.scores[1]+=S.bet;
+  }
+  S.round++;
+
+  if(S.scores[0]<=0||S.scores[1]<=0||S.round>=20){
+    S.gameOver=true;
+    S.winner=S.scores[0]>S.scores[1]?0:1;
+    if(S.gameMode==="ai"){J4F.leaderboard.submit(GAME_ID,S.winner===0?"win":"loss").catch(()=>{})}
+    if(S.isOnline){
+      const r=S.winner===S.myPlayer?"win":"loss";
+      J4F.leaderboard.submit(GAME_ID,r).catch(()=>{});
+      J4F.room.finish(S.winner).catch(()=>{});
+    }
+  }
+
+  if(S.isOnline){
+    J4F.room.sendMoveAndState({pick:idx},{cards:S.cards,scores:S.scores,round:S.round,phase:S.phase,lastResult:S.lastResult,gameOver:S.gameOver,winner:S.winner,playerPick:idx,revealed:true}).catch(()=>{});
+  }
+  render();
+}
+
+function nextRound(){
+  dealCards();
+  render();
+}
+
+function setBet(amount){S.bet=Math.min(amount,S.scores[0],S.scores[1]);render()}
+
+function resetState(){
+  if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
+  Object.assign(S,{cards:[null,null,null],shownIdx:1,revealed:false,playerPick:-1,
+    scores:[1000,1000],bet:100,round:0,phase:"betting",lastResult:null,
+    gameOver:false,winner:null,gameMode:null,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",
+    leavePrompt:false,isLeaving:false,showRules:false,inviteMsg:"",searching:false,searchMsg:""});
+  seenMoveId=0;
+}
+
+/* ═══ ONLINE ═══ */
+async function createRoom(){
+  S.onlineErr="";
+  try{
+    dealCards();
+    const{code}=await J4F.room.create(GAME_ID,{cards:S.cards,scores:[1000,1000],round:0,phase:"picking",gameOver:false,winner:null});
+    S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;S.gameMode="online";seenMoveId=0;S.screen="lobby";render();setupHostListener();
+  }catch(e){S.onlineErr="Failed: "+(e.message||e);render()}
+}
+async function joinRoom(codeOverride){
+  S.onlineErr="";const code=(codeOverride||S.joinCode).toUpperCase().trim();
+  if(code.length!==4){S.onlineErr="Enter a 4-letter code";render();return}
+  try{
+    const{roomData}=await J4F.room.join(code);
+    S.roomCode=code;S.myPlayer=1;S.isOnline=true;S.opJoined=true;
+    const st=roomData.state||{};
+    if(st.cards)S.cards=st.cards;S.scores=st.scores||[1000,1000];S.round=st.round||0;
+    S.gameOver=false;seenMoveId=0;S.gameMode="online";S.phase="picking";S.screen="game";render();setupGuestListener();
+  }catch(e){S.onlineErr=e.message||"Failed";render()}
+}
+function searchOnline(){
+  S.searching=true;S.onlineErr="";render();dealCards();
+  cancelMatchmake=J4F.room.matchmake(GAME_ID,{cards:S.cards,scores:[1000,1000],round:0,phase:"picking",gameOver:false,winner:null},
+    (code,player,roomData)=>{
+      cancelMatchmake=null;S.searching=false;S.roomCode=code;S.myPlayer=player;S.isOnline=true;S.gameMode="online";seenMoveId=0;
+      if(player===0){S.opJoined=false;S.screen="lobby";render();setupHostListener()}
+      else{S.opJoined=true;if(roomData?.state?.cards)S.cards=roomData.state.cards;S.phase="picking";S.screen="game";render();setupGuestListener()}
+    },
+    (msg)=>{cancelMatchmake=null;S.searching=false;S.onlineErr=msg;S.screen="online";render()}
+  );
+}
+function cancelSearch(){if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}S.searching=false;render()}
+function setupHostListener(){
+  J4F.room.onUpdate(data=>{
+    if(S.isLeaving)return;
+    if(!S.opJoined&&data.guest&&data.status==="playing"){S.opJoined=true;S.screen="game";S.phase="picking";render();return}
+    if(data.moveId>seenMoveId&&data.state){seenMoveId=data.moveId;Object.assign(S,data.state);render()}
+  });
+}
+function setupGuestListener(){
+  J4F.room.onUpdate(data=>{
+    if(S.isLeaving)return;
+    if(data.moveId>seenMoveId&&data.state){seenMoveId=data.moveId;Object.assign(S,data.state);render()}
+  });
+}
+async function leaveOnlineMatchToMode(){
+  if(S.isLeaving)return;S.isLeaving=true;
+  try{await J4F.room.leave()}catch(e){}
+  resetState();S.screen="mode";S.isLeaving=false;render();
+}
+function shareWA(code){const base=window.location.origin+"/games/mangatha/";const url=code?base+"?room="+code:base;J4F.share.whatsapp(code?"🃏 Join my Mangatha game!\nPlay: "+url:"🃏 Let's play Mangatha!\nPlay: "+url)}
+async function shareCopy(code){const base=window.location.origin+"/games/mangatha/";const url=code?base+"?room="+code:base;const ok=await J4F.share.copy("Join my Mangatha game!\n"+url);S.inviteMsg=ok?"Copied!":"Failed";render();setTimeout(()=>{S.inviteMsg="";render()},2000)}
+
+/* ═══ RENDER ═══ */
+const app=document.getElementById("app");
+function render(){
+  if(S.screen==="mode")renderMode();
+  else if(S.screen==="online")renderOnline();
+  else if(S.screen==="searching")renderSearching();
+  else if(S.screen==="lobby")renderLobby();
+  else if(S.screen==="game")renderGame();
+}
+
+function renderMode(){
+  let h=`<div class="screen" style="padding-top:20px">
+    <div class="title">🃏 மங்காத்தா</div><div class="subtitle">MANGATHA</div>
+    <a href="/" style="color:#ffd93d;font-size:11px;text-decoration:none;margin-bottom:4px">← J4F Home</a>
+    <p style="font-size:13px;text-align:center">3-card guessing game! Pick the higher card to win chips.</p>
+    <div class="card-ui" onclick="resetState();S.gameMode='pvp';S.screen='game';dealCards();render()">
+      <div style="font-size:32px">👥</div><div style="flex:1"><div style="color:#ffd93d;font-weight:700;font-size:15px">Local 2 Player</div><div style="color:#a09060;font-size:11px">Take turns picking · 1000 chips each</div></div>
+    </div>
+    <div class="card-ui" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.onlineErr='';S.joinCode='';S.screen='online';render()">
+      <div style="font-size:32px">🌐</div><div style="flex:1"><div style="color:#5bc0de;font-weight:700;font-size:15px">Online Multiplayer</div><div style="color:#7ab8d4;font-size:11px">Play with a friend</div></div>
+    </div>
+    <div class="card-ui" onclick="resetState();S.gameMode='ai';S.screen='game';dealCards();render()">
+      <div style="font-size:32px">🤖</div><div style="flex:1"><div style="color:#4CAF50;font-weight:700;font-size:15px">Play vs AI</div><div style="color:#a09060;font-size:11px">Test your luck!</div></div>
+    </div>
+  </div>`;app.innerHTML=h;
+}
+function renderOnline(){
+  let h=`<div class="screen" style="padding-top:20px;justify-content:center">
+    <div class="title" style="font-size:24px">🃏 Mangatha</div>
+    <p style="color:#5bc0de;font-size:15px;font-weight:600">🌐 Online Play</p>
+    <button class="card-ui" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.screen='searching';searchOnline()"><div style="font-size:28px">🔍</div><div style="flex:1"><div style="color:#5bc0de;font-weight:700">Search Online</div></div></button>
+    <button class="card-ui" style="background:linear-gradient(145deg,#1a4a2a,#0f3018);border-color:#2a8c4a" onclick="createRoom()"><div style="font-size:28px">👫</div><div style="flex:1"><div style="color:#4ade80;font-weight:700">Send to Friends</div></div></button>
+    <div style="color:#c49a46;font-size:11px;letter-spacing:2px;margin:4px">── HAVE A CODE? ──</div>
+    <div style="width:100%;background:rgba(0,0,0,.3);border:2px solid #c49a46;border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px;justify-content:center">
+      <input class="join-input" type="text" maxlength="4" placeholder="ABCD" style="max-width:120px;padding:8px;font-size:20px" value="${S.joinCode}" oninput="S.joinCode=this.value.toUpperCase()">
+      <button class="btn-primary" onclick="joinRoom()">Join</button>
+    </div>
+    ${S.onlineErr?`<div class="error-box">⚠️ ${S.onlineErr}</div>`:""}
+    <button class="btn" onclick="S.screen='mode';render()">← Back</button>
+  </div>`;app.innerHTML=h;
+}
+function renderSearching(){app.innerHTML=`<div class="screen" style="padding-top:40px;align-items:center"><div class="title" style="font-size:24px">🃏 Mangatha</div><div style="font-size:48px;margin:20px">🔍</div><p style="color:#5bc0de;font-weight:700">Searching...</p><div class="anim-pulse" style="color:#7ab8d4">Looking for players...</div><button class="btn" style="margin-top:20px" onclick="cancelSearch();S.screen='online';render()">Cancel</button></div>`}
+function renderLobby(){app.innerHTML=`<div class="screen" style="padding-top:20px;align-items:center"><div class="title" style="font-size:24px">🃏 Mangatha</div><div class="room-code-display"><div style="color:#a09060;font-size:11px;letter-spacing:2px;margin-bottom:6px">ROOM CODE</div><div class="room-code-text">${S.roomCode}</div></div><div class="anim-pulse" style="color:#5bc0de;font-size:14px">Waiting for opponent...</div><div class="share-row" style="margin-top:12px"><button class="btn-wa" style="flex:1;padding:10px;font-size:12px" onclick="shareWA('${S.roomCode}')">💬 WhatsApp</button><button class="btn-copy" style="flex:1;padding:10px;font-size:12px" onclick="shareCopy('${S.roomCode}')">📋 Copy${S.inviteMsg?" ✓":""}</button></div><button class="btn" style="margin-top:12px" onclick="leaveOnlineMatchToMode()">Cancel</button></div>`}
+
+function renderGame(){
+  const isAI=S.gameMode==="ai",isOn=S.gameMode==="online";
+  const p0Label=isOn?(S.myPlayer===0?"You":"Opponent"):isAI?"You":"P1";
+  const p1Label=isOn?(S.myPlayer===1?"You":"Opponent"):isAI?"Dealer":"P2";
+
+  let statusText="";
+  if(S.gameOver){
+    if(isOn)statusText=S.winner===S.myPlayer?"You Win! 🎉":"You Lost 😤";
+    else if(isAI)statusText=S.winner===0?"You Win! 🎉":"Dealer Wins 😤";
+    else statusText=(S.winner===0?p0Label:p1Label)+" Wins!";
+  }else if(S.phase==="picking"){
+    statusText="Pick a face-down card! Which is higher?";
+  }else if(S.phase==="result"){
+    statusText=S.lastResult==="win"?"You picked higher! +"+S.bet+" chips":"Wrong pick! -"+S.bet+" chips";
+  }
+
+  // Cards display
+  let cardsHTML=`<div class="card-row">`;
+  for(let i=0;i<3;i++){
+    const c=S.cards[i];
+    if(!c){cardsHTML+=`<div class="playing-card facedown"><span style="font-size:20px;color:#c49a46">🃏</span></div>`;continue}
+    const isShown=i===S.shownIdx;
+    const isRevealed=S.revealed||isShown;
+    const isPickable=S.phase==="picking"&&!isShown&&!S.revealed;
+    const isWinner=S.revealed&&i===S.playerPick&&S.lastResult==="win";
+    const color=SUIT_COLORS[c.s];
+
+    if(isRevealed){
+      cardsHTML+=`<div class="playing-card ${color}${isWinner?" winner":""}${isPickable?" selectable":""}" ${isPickable?`onclick="pickCard(${i})"`:""}">
+        <span class="card-rank">${c.r}</span><span class="card-suit">${c.s}</span>
+      </div>`;
+    }else{
+      cardsHTML+=`<div class="playing-card facedown${isPickable?" selectable":""}" ${isPickable?`onclick="pickCard(${i})"`:""}>
+        <span style="font-size:14px;color:#c49a46">${i===0?"⬅️":"➡️"}</span>
+        <span style="font-size:9px;color:#c49a46">Pick</span>
+      </div>`;
+    }
+  }
+  cardsHTML+=`</div>`;
+
+  let h=`
+  <div style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:380px;margin-bottom:8px">
+    <div><div class="title" style="font-size:20px">🃏 Mangatha</div><div style="color:#a09060;font-size:9px">${isOn?"🌐 "+S.roomCode:isAI?"vs Dealer":"PvP"} · Round ${S.round+1}</div></div>
+    <div style="font-size:12px;color:#ffd93d;font-weight:700">Bet: ${S.bet}💰</div>
+  </div>
+  <div class="score-bar">
+    <div class="score-badge on">💰 ${p0Label}: ${S.scores[0]}</div>
+    <div class="score-badge on">💰 ${p1Label}: ${S.scores[1]}</div>
+  </div>
+  <div class="info-box">${statusText}</div>
+  <div style="text-align:center;color:#a09060;font-size:11px;margin:6px">⬇️ Middle card shown · Pick LEFT or RIGHT ⬇️</div>
+  ${cardsHTML}
+  ${S.phase==="result"?`
+    <div class="result-box">
+      <p style="font-size:16px;font-weight:700;color:${S.lastResult==="win"?"#4ade80":"#ff4444"};margin-bottom:4px">${S.lastResult==="win"?"🎉 You Won!":"😤 You Lost!"}</p>
+      <p style="font-size:12px">${S.lastResult==="win"?"+":""}${S.lastResult==="win"?S.bet:-S.bet} chips</p>
+    </div>
+    ${!S.gameOver?`<button class="btn-primary" style="margin-top:8px" onclick="nextRound()">Next Round →</button>`:""}
+  `:""}
+  ${!S.gameOver&&S.phase==="picking"?`
+    <div style="margin-top:8px;text-align:center">
+      <div style="font-size:11px;color:#a09060;margin-bottom:4px">Adjust bet:</div>
+      <div class="bet-area">
+        ${[50,100,200,500].map(b=>`<button class="bet-btn" style="background:${S.bet===b?"rgba(255,217,61,.2)":"rgba(0,0,0,.2)"};color:#ffd93d;border-color:${S.bet===b?"#ffd93d":"#c49a46"}" onclick="setBet(${b})">${b}</button>`).join("")}
+      </div>
+    </div>
+  `:""}
+  <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center">
+    ${S.gameOver?`<button class="btn-primary" onclick="${isOn?"leaveOnlineMatchToMode()":"resetState();S.gameMode='"+S.gameMode+"';S.screen='game';dealCards();render()"}">New Game</button>`:""}
+    <button class="btn" onclick="S.showRules=!S.showRules;render()">${S.showRules?"Hide":"Rules"}</button>
+    ${!isOn?`<button class="btn" onclick="resetState();S.screen='mode';render()">Mode</button>`:`<button class="btn" onclick="leaveOnlineMatchToMode()">Leave</button>`}
+  </div>
+  ${S.showRules?`<div class="rules-box">
+    <p style="font-weight:700;color:#ffd93d;margin-bottom:6px">How to Play Mangatha</p>
+    <p style="margin-bottom:5px">3 cards are dealt. The middle card is shown face-up.</p>
+    <p style="margin-bottom:5px">Pick either the LEFT or RIGHT face-down card.</p>
+    <p style="margin-bottom:5px">If your pick is higher than the other hidden card, you win!</p>
+    <p style="margin-bottom:5px">💰 Adjust your bet before picking.</p>
+    <p>Play 20 rounds or until chips run out!</p>
+  </div>`:""}`;
+  app.innerHTML=h;
+}
+
+/* ═══ INIT ═══ */
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  const roomCode=params.get("room");
+  if(roomCode&&roomCode.length===4){S.joinCode=roomCode.toUpperCase();S.screen="online";render();setTimeout(()=>joinRoom(roomCode),500);window.history.replaceState({},"",window.location.pathname);return}
+  render();
+})();
+</script>
+</body>
+</html>

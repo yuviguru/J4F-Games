@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#3a1028">
+<title>Raaja Raani — J4F</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(180deg,#3a1028,#1a0818);color:#e0b0c8;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#app{height:100dvh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;align-items:center;padding:12px 10px 100px}
+.title{color:#ff6b9d;font-size:26px;font-weight:700;letter-spacing:2px;text-shadow:0 2px 8px rgba(255,107,157,.3)}
+.subtitle{color:#a06080;font-size:12px;letter-spacing:2px}
+.btn{padding:8px 14px;background:rgba(60,20,40,.6);color:#e0b0c8;border:1px solid #c4466e;border-radius:10px;font:600 11px -apple-system,sans-serif;cursor:pointer}
+.btn-primary{padding:9px 18px;background:linear-gradient(135deg,#c4466e,#8b1a3a);color:#fff;border:none;border-radius:10px;font:700 13px -apple-system,sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(196,70,110,.4)}
+.card{background:linear-gradient(145deg,#4a1a30,#2a0f1e);border:2px solid #c4466e;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;width:100%}
+.error-box{color:#ff6b6b;font-size:12px;font-weight:600;background:rgba(255,50,50,.15);padding:8px 14px;border-radius:8px;border:1px solid rgba(255,50,50,.3);text-align:center;width:100%}
+.screen{width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.btn-wa{padding:12px 20px;background:linear-gradient(135deg,#1a5c2e,#0f3d1e);color:#4ade80;border:2px solid #2a8c4a;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.btn-copy{padding:12px 20px;background:linear-gradient(135deg,#2a1a4a,#1a0e30);color:#b39ddb;border:2px solid #6b45a0;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.join-input{width:100%;max-width:160px;padding:12px;font:800 24px -apple-system,sans-serif;text-align:center;letter-spacing:8px;background:rgba(0,0,0,.3);color:#ff6b9d;border:2px solid #c4466e;border-radius:10px;outline:none;text-transform:uppercase}
+.room-code-display{background:rgba(0,0,0,.4);border:3px solid #ff6b9d;border-radius:16px;padding:24px 36px;text-align:center}
+.room-code-text{color:#ff6b9d;font-size:48px;font-weight:800;letter-spacing:12px}
+.share-row{display:flex;gap:8px;width:100%;max-width:320px}
+.info-box{background:rgba(0,0,0,.3);border:1px solid #c4466e;border-radius:10px;padding:8px 14px;font-size:12px;text-align:center;width:100%}
+.rules-box{margin-top:10px;background:rgba(30,10,20,.9);border:1px solid #c4466e;border-radius:12px;padding:12px 14px;max-width:380px;width:100%;font-size:12px;line-height:1.5}
+
+/* Role cards */
+.role-card{width:90px;height:130px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-weight:700;cursor:pointer;transition:all .2s;border:3px solid transparent}
+.role-card.facedown{background:linear-gradient(145deg,#4a1a30,#2a0f1e);border-color:#c4466e;cursor:default}
+.role-card.facedown .role-emoji{font-size:30px}
+.role-card.revealed{border-color:#ffd93d;box-shadow:0 4px 20px rgba(255,217,61,.3)}
+.role-card.selectable{border-color:#ffd93d;box-shadow:0 0 12px rgba(255,217,61,.4);cursor:pointer}
+.role-card.selectable:active{transform:scale(.95)}
+.role-emoji{font-size:36px}
+.role-name{font-size:11px;letter-spacing:1px}
+.role-points{font-size:10px;color:#a06080}
+.cards-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+.score-bar{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:380px;margin-bottom:6px}
+.score-badge{padding:5px 10px;border-radius:8px;font:700 12px -apple-system,sans-serif;border:2px solid transparent;transition:all .3s}
+.score-badge.on{background:linear-gradient(135deg,#c4466e,#8b1a3a);color:#fff;border-color:#ff6b9d;box-shadow:0 0 10px rgba(255,107,157,.3)}
+.score-badge.off{background:rgba(60,20,40,.6);color:#e0b0c8}
+.result-box{background:rgba(0,0,0,.4);border:2px solid #ffd93d;border-radius:14px;padding:16px;text-align:center;width:100%;max-width:350px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes dotBlink{0%,20%{opacity:0}50%{opacity:1}100%{opacity:0}}
+@keyframes cardFlip{0%{transform:scaleX(1)}50%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+.anim-fadeUp{animation:fadeUp .4s ease both}
+.anim-pulse{animation:pulse 1.5s ease infinite}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/j4f-sdk.js"></script>
+<script>
+/*
+  Raaja Raani — Classic Indian card role game (4 players, 2 human here)
+  Roles: Raja (King), Rani (Queen), Chor (Thief), Sipahi (Police)
+  Raja announces, Sipahi guesses who the Chor is.
+  Points: Raja=1000, Rani=800 always
+  If Sipahi catches Chor: Sipahi=600, Chor=0
+  If Sipahi picks wrong: Chor=600, Sipahi=0
+*/
+const GAME_ID="raaja-raani";
+const ROLES=[
+  {id:"raja",name:"Raja",tamil:"ராஜா",emoji:"👑",points:1000,color:"#ffd93d",bg:"linear-gradient(135deg,#8b6508,#daa520)"},
+  {id:"rani",name:"Rani",tamil:"ராணி",emoji:"👸",points:800,color:"#ff69b4",bg:"linear-gradient(135deg,#c4466e,#ff69b4)"},
+  {id:"sipahi",name:"Sipahi",tamil:"சிப்பாய்",emoji:"💂",points:0,color:"#4d96ff",bg:"linear-gradient(135deg,#2a3a6b,#4d96ff)"},
+  {id:"chor",name:"Chor",tamil:"சோர்",emoji:"🦹",points:0,color:"#ff4444",bg:"linear-gradient(135deg,#8b0000,#ff4444)"}
+];
+
+const S={
+  screen:"mode",gameMode:null,
+  // Game state
+  roles:[], // 4 role assignments [p0role, p1role, p2role, p3role] - p0,p1 are human/online, p2,p3 are AI
+  revealed:[false,false,false,false],
+  phase:"deal", // deal, reveal-raja, sipahi-guess, result
+  rajaPlayer:-1, sipahiPlayer:-1, chorPlayer:-1, raniPlayer:-1,
+  sipahiGuess:-1, roundResult:null,
+  scores:[0,0], // only tracking 2 players for simplicity
+  round:0, maxRounds:5,
+  gameOver:false,winner:null,
+  // Online
+  roomCode:"",joinCode:"",myPlayer:0,isOnline:false,opJoined:false,onlineErr:"",
+  leavePrompt:false,waitingReconnect:false,reconnectLeft:20,reconnectWinner:null,isLeaving:false,
+  showRules:false,inviteMsg:"",searching:false,searchMsg:"",
+};
+let seenMoveId=0,cancelMatchmake=null,reconnectIv=null;
+
+function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function dealRoles(){
+  const shuffled=shuffle([0,1,2,3]); // role indices
+  S.roles=shuffled;
+  S.revealed=[false,false,false,false];
+  S.phase="deal";
+  S.rajaPlayer=shuffled.indexOf(0);
+  S.raniPlayer=shuffled.indexOf(1);
+  S.sipahiPlayer=shuffled.indexOf(2);
+  S.chorPlayer=shuffled.indexOf(3);
+  S.sipahiGuess=-1;S.roundResult=null;
+}
+
+function revealCard(playerIdx){
+  if(S.revealed[playerIdx])return;
+  S.revealed[playerIdx]=true;
+
+  // After Raja reveals, move to sipahi-guess phase
+  if(S.phase==="deal"){
+    S.phase="reveal-raja";
+    // Auto-reveal Raja
+    S.revealed[S.rajaPlayer]=true;
+    setTimeout(()=>{
+      S.phase="sipahi-guess";
+      // If sipahi is AI (player 2 or 3), auto-guess
+      if(S.sipahiPlayer>=2){
+        setTimeout(()=>aiSipahiGuess(),800);
+      }
+      render();
+    },1000);
+  }
+  render();
+}
+
+function sipahiGuess(targetPlayer){
+  if(S.phase!=="sipahi-guess")return;
+  if(targetPlayer===S.rajaPlayer||targetPlayer===S.raniPlayer||targetPlayer===S.sipahiPlayer)return;
+
+  S.sipahiGuess=targetPlayer;
+  S.revealed=[true,true,true,true]; // Reveal all
+
+  const correct=targetPlayer===S.chorPlayer;
+  if(correct){
+    S.roundResult="caught";
+    // Sipahi gets 600, Chor gets 0
+    // Map to player scores: player 0 and 1 accumulate
+    addScore(S.sipahiPlayer,600);
+    addScore(S.chorPlayer,0);
+  }else{
+    S.roundResult="escaped";
+    addScore(S.chorPlayer,600);
+    addScore(S.sipahiPlayer,0);
+  }
+  // Raja and Rani always get their points
+  addScore(S.rajaPlayer,1000);
+  addScore(S.raniPlayer,800);
+
+  S.phase="result";
+  S.round++;
+
+  if(S.round>=S.maxRounds){
+    S.gameOver=true;
+    S.winner=S.scores[0]>S.scores[1]?0:S.scores[1]>S.scores[0]?1:-1;
+    if(S.isOnline){
+      const r=S.winner===S.myPlayer?"win":S.winner===-1?"draw":"loss";
+      J4F.leaderboard.submit(GAME_ID,r).catch(()=>{});
+      J4F.room.finish(S.winner).catch(()=>{});
+    }else if(S.gameMode==="ai"){
+      const r=S.winner===0?"win":S.winner===-1?"draw":"loss";
+      J4F.leaderboard.submit(GAME_ID,r).catch(()=>{});
+    }
+  }
+
+  if(S.isOnline){
+    J4F.room.sendMoveAndState({action:"guess",target:targetPlayer},{roles:S.roles,scores:S.scores,round:S.round,phase:S.phase,gameOver:S.gameOver,winner:S.winner,roundResult:S.roundResult,sipahiGuess:S.sipahiGuess}).catch(()=>{});
+  }
+  render();
+}
+
+function addScore(playerIdx,pts){
+  // Players 0 and 1 are the two main players, 2 and 3 are AI fillers
+  if(playerIdx<=1)S.scores[playerIdx]+=pts;
+}
+
+function aiSipahiGuess(){
+  // AI guesses between the two unrevealed non-sipahi, non-raja players
+  const candidates=[];
+  for(let i=0;i<4;i++){
+    if(i!==S.rajaPlayer&&i!==S.sipahiPlayer)candidates.push(i);
+  }
+  // Random guess (50/50)
+  const guess=candidates[Math.floor(Math.random()*candidates.length)];
+  sipahiGuess(guess);
+}
+
+function nextRound(){
+  dealRoles();
+  S.phase="deal";
+  render();
+  // Auto-start: reveal all cards briefly face down, then reveal Raja
+  setTimeout(()=>{
+    S.phase="reveal-raja";
+    S.revealed[S.rajaPlayer]=true;
+    render();
+    setTimeout(()=>{
+      S.phase="sipahi-guess";
+      if(S.sipahiPlayer>=2)setTimeout(()=>aiSipahiGuess(),800);
+      render();
+    },1200);
+  },800);
+}
+
+function resetState(){
+  if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
+  Object.assign(S,{roles:[],revealed:[false,false,false,false],phase:"deal",rajaPlayer:-1,sipahiPlayer:-1,chorPlayer:-1,raniPlayer:-1,
+    sipahiGuess:-1,roundResult:null,scores:[0,0],round:0,gameOver:false,winner:null,
+    gameMode:null,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",
+    leavePrompt:false,waitingReconnect:false,reconnectLeft:20,reconnectWinner:null,isLeaving:false,
+    showRules:false,inviteMsg:"",searching:false,searchMsg:""});
+  seenMoveId=0;
+}
+
+function startGame(){
+  dealRoles();
+  // Auto-reveal Raja after short delay
+  setTimeout(()=>{
+    S.phase="reveal-raja";
+    S.revealed[S.rajaPlayer]=true;
+    render();
+    setTimeout(()=>{
+      S.phase="sipahi-guess";
+      if(S.gameMode==="ai"&&S.sipahiPlayer>=2){
+        setTimeout(()=>aiSipahiGuess(),800);
+      }
+      render();
+    },1200);
+  },800);
+  render();
+}
+
+/* ═══ ONLINE ═══ */
+async function createRoom(){
+  S.onlineErr="";
+  try{
+    dealRoles();
+    const{code}=await J4F.room.create(GAME_ID,{roles:S.roles,scores:[0,0],round:0,phase:"deal",gameOver:false,winner:null});
+    S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;S.gameMode="online";
+    seenMoveId=0;S.screen="lobby";render();setupHostListener();
+  }catch(e){S.onlineErr="Failed: "+(e.message||e);render()}
+}
+async function joinRoom(codeOverride){
+  S.onlineErr="";const code=(codeOverride||S.joinCode).toUpperCase().trim();
+  if(code.length!==4){S.onlineErr="Enter a 4-letter code";render();return}
+  try{
+    const{roomData}=await J4F.room.join(code);
+    S.roomCode=code;S.myPlayer=1;S.isOnline=true;S.opJoined=true;
+    const st=roomData.state||{};
+    if(st.roles)S.roles=st.roles;S.scores=st.scores||[0,0];S.round=st.round||0;
+    S.gameOver=false;S.winner=null;seenMoveId=0;
+    S.gameMode="online";S.screen="game";
+    startGame();
+    setupGuestListener();
+  }catch(e){S.onlineErr=e.message||"Failed to join";render()}
+}
+function searchOnline(){
+  S.searching=true;S.onlineErr="";render();
+  dealRoles();
+  cancelMatchmake=J4F.room.matchmake(GAME_ID,{roles:S.roles,scores:[0,0],round:0,phase:"deal",gameOver:false,winner:null},
+    (code,player,roomData)=>{
+      cancelMatchmake=null;S.searching=false;S.roomCode=code;S.myPlayer=player;S.isOnline=true;S.gameMode="online";seenMoveId=0;
+      if(player===0){S.opJoined=false;S.screen="lobby";render();setupHostListener()}
+      else{S.opJoined=true;S.screen="game";if(roomData?.state?.roles)S.roles=roomData.state.roles;startGame();setupGuestListener()}
+    },
+    (msg)=>{cancelMatchmake=null;S.searching=false;S.onlineErr=msg;S.screen="online";render()}
+  );
+}
+function cancelSearch(){if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}S.searching=false;render()}
+function setupHostListener(){
+  J4F.room.onUpdate(data=>{
+    if(S.isLeaving)return;
+    if(!S.opJoined&&data.guest&&data.status==="playing"){S.opJoined=true;S.screen="game";startGame();return}
+    if(data.status==="finished"&&!S.gameOver){S.gameOver=true;S.winner=data.winner;render();return}
+    if(data.moveId>seenMoveId&&data.state){
+      seenMoveId=data.moveId;
+      Object.assign(S,{scores:data.state.scores,round:data.state.round,phase:data.state.phase,gameOver:data.state.gameOver,winner:data.state.winner,roundResult:data.state.roundResult,sipahiGuess:data.state.sipahiGuess,revealed:[true,true,true,true]});
+      render();
+    }
+  });
+}
+function setupGuestListener(){
+  J4F.room.onUpdate(data=>{
+    if(S.isLeaving)return;
+    if(data.status==="finished"&&!S.gameOver){S.gameOver=true;S.winner=data.winner;render();return}
+    if(data.moveId>seenMoveId&&data.state){
+      seenMoveId=data.moveId;
+      Object.assign(S,{scores:data.state.scores,round:data.state.round,phase:data.state.phase,gameOver:data.state.gameOver,winner:data.state.winner,roundResult:data.state.roundResult,sipahiGuess:data.state.sipahiGuess,revealed:[true,true,true,true]});
+      render();
+    }
+  });
+}
+async function leaveOnlineMatchToMode(){
+  if(S.isLeaving)return;S.isLeaving=true;
+  try{await J4F.room.leave()}catch(e){}
+  resetState();S.screen="mode";S.isLeaving=false;render();
+}
+function shareWA(code){const base=window.location.origin+"/games/raaja-raani/";const url=code?base+"?room="+code:base;J4F.share.whatsapp(code?"👑 Join my Raaja Raani game!\n\nPlay: "+url:"👑 Let's play Raaja Raani!\n\nPlay: "+url)}
+async function shareCopy(code){const base=window.location.origin+"/games/raaja-raani/";const url=code?base+"?room="+code:base;const ok=await J4F.share.copy("Join my Raaja Raani game!\n"+url);S.inviteMsg=ok?"Copied!":"Failed";render();setTimeout(()=>{S.inviteMsg="";render()},2000)}
+
+/* ═══ RENDER ═══ */
+const app=document.getElementById("app");
+function render(){
+  if(S.screen==="mode")renderMode();
+  else if(S.screen==="online")renderOnline();
+  else if(S.screen==="searching")renderSearching();
+  else if(S.screen==="lobby")renderLobby();
+  else if(S.screen==="game")renderGame();
+}
+
+function renderMode(){
+  let h=`<div class="screen" style="padding-top:20px">
+    <div class="title">👑 ராஜா ராணி</div>
+    <div class="subtitle">RAAJA RAANI</div>
+    <a href="/" style="color:#ff6b9d;font-size:11px;text-decoration:none;margin-bottom:4px">← J4F Home</a>
+    <p style="font-size:13px;text-align:center">Classic role-guessing card game!<br>Who is the Raja? Who is the Chor?</p>
+    <div class="card" onclick="resetState();S.gameMode='pvp';S.screen='game';startGame()">
+      <div style="font-size:32px">👥</div>
+      <div style="flex:1"><div style="color:#ff6b9d;font-weight:700;font-size:15px">Local 2 Player</div><div style="color:#a06080;font-size:11px">Play 5 rounds · ${ROLES.map(r=>r.emoji).join("")}</div></div>
+    </div>
+    <div class="card" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.onlineErr='';S.joinCode='';S.screen='online';render()">
+      <div style="font-size:32px">🌐</div>
+      <div style="flex:1"><div style="color:#5bc0de;font-weight:700;font-size:15px">Online Multiplayer</div><div style="color:#7ab8d4;font-size:11px">Play with a friend</div></div>
+    </div>
+    <div class="card" onclick="resetState();S.gameMode='ai';S.screen='game';startGame()">
+      <div style="font-size:32px">🤖</div>
+      <div style="flex:1"><div style="color:#4CAF50;font-weight:700;font-size:15px">Play vs AI</div><div style="color:#a06080;font-size:11px">AI fills the other roles</div></div>
+    </div>
+  </div>`;app.innerHTML=h;
+}
+
+function renderOnline(){
+  let h=`<div class="screen" style="padding-top:20px;justify-content:center">
+    <div class="title" style="font-size:24px">👑 Raaja Raani</div>
+    <p style="color:#5bc0de;font-size:15px;font-weight:600">🌐 Online Play</p>
+    <button class="card" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.screen='searching';searchOnline()"><div style="font-size:28px">🔍</div><div style="flex:1"><div style="color:#5bc0de;font-weight:700">Search Online</div></div></button>
+    <button class="card" style="background:linear-gradient(145deg,#1a4a2a,#0f3018);border-color:#2a8c4a" onclick="createRoom()"><div style="font-size:28px">👫</div><div style="flex:1"><div style="color:#4ade80;font-weight:700">Send to Friends</div></div></button>
+    <div style="color:#c4466e;font-size:11px;letter-spacing:2px;margin:4px">── HAVE A CODE? ──</div>
+    <div style="width:100%;background:rgba(0,0,0,.3);border:2px solid #c4466e;border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px;justify-content:center">
+      <input class="join-input" type="text" maxlength="4" placeholder="ABCD" style="max-width:120px;padding:8px;font-size:20px" value="${S.joinCode}" oninput="S.joinCode=this.value.toUpperCase()">
+      <button class="btn-primary" onclick="joinRoom()">Join</button>
+    </div>
+    ${S.onlineErr?`<div class="error-box">⚠️ ${S.onlineErr}</div>`:""}
+    <button class="btn" onclick="S.screen='mode';render()">← Back</button>
+  </div>`;app.innerHTML=h;
+}
+function renderSearching(){
+  let h=`<div class="screen" style="padding-top:40px;align-items:center">
+    <div class="title" style="font-size:24px">👑 Raaja Raani</div>
+    <div style="font-size:48px;margin:20px">🔍</div>
+    <p style="color:#5bc0de;font-size:16px;font-weight:700">Searching for opponent</p>
+    <div class="anim-pulse" style="color:#7ab8d4;font-size:14px">Looking for players<span style="display:inline-flex;gap:2px"><span style="animation:dotBlink 1.4s ease infinite">.</span><span style="animation:dotBlink 1.4s ease infinite .2s">.</span><span style="animation:dotBlink 1.4s ease infinite .4s">.</span></span></div>
+    <button class="btn" style="margin-top:20px" onclick="cancelSearch();S.screen='online';render()">Cancel</button>
+  </div>`;app.innerHTML=h;
+}
+function renderLobby(){
+  let h=`<div class="screen" style="padding-top:20px;align-items:center">
+    <div class="title" style="font-size:24px">👑 Raaja Raani</div>
+    <div class="room-code-display"><div style="color:#a06080;font-size:11px;letter-spacing:2px;margin-bottom:6px">ROOM CODE</div><div class="room-code-text">${S.roomCode}</div></div>
+    <div class="anim-pulse" style="color:#5bc0de;font-size:14px">Waiting for opponent<span style="display:inline-flex;gap:2px"><span style="animation:dotBlink 1.4s ease infinite">.</span><span style="animation:dotBlink 1.4s ease infinite .2s">.</span><span style="animation:dotBlink 1.4s ease infinite .4s">.</span></span></div>
+    <div class="share-row" style="margin-top:12px">
+      <button class="btn-wa" style="flex:1;padding:10px;font-size:12px" onclick="shareWA('${S.roomCode}')">💬 WhatsApp</button>
+      <button class="btn-copy" style="flex:1;padding:10px;font-size:12px" onclick="shareCopy('${S.roomCode}')">📋 Copy${S.inviteMsg?" ✓":""}</button>
+    </div>
+    <button class="btn" style="margin-top:12px" onclick="leaveOnlineMatchToMode()">Cancel</button>
+  </div>`;app.innerHTML=h;
+}
+
+function renderGame(){
+  const isAI=S.gameMode==="ai",isOn=S.gameMode==="online";
+  const p0Label=isOn?(S.myPlayer===0?"You":"Opponent"):isAI?"You":"P1";
+  const p1Label=isOn?(S.myPlayer===1?"You":"Opponent"):isAI?"AI":"P2";
+
+  // Player names for 4 positions
+  const pNames=[p0Label,p1Label,"NPC 1","NPC 2"];
+
+  let turnText=`Round ${S.round+1}/${S.maxRounds}`;
+  if(S.gameOver){
+    if(S.winner===-1)turnText="It's a Draw!";
+    else if(isOn)turnText=S.winner===S.myPlayer?"You Win! 🎉":"You Lost 😤";
+    else if(isAI)turnText=S.winner===0?"You Win! 🎉":"AI Wins 😤";
+    else turnText="P"+(S.winner+1)+" Wins! 🎉";
+  }
+
+  // Role cards display
+  let cardsHTML=`<div class="cards-row">`;
+  for(let i=0;i<4;i++){
+    const roleIdx=S.roles[i];
+    const role=ROLES[roleIdx];
+    const isRevealed=S.revealed[i]||S.phase==="result";
+    const isSipahiTarget=S.phase==="sipahi-guess"&&i!==S.rajaPlayer&&i!==S.sipahiPlayer;
+    const canSelect=isSipahiTarget&&!isRevealed;
+
+    if(isRevealed){
+      cardsHTML+=`<div class="role-card revealed" style="background:${role.bg}" ${canSelect?`onclick="sipahiGuess(${i})"`:""}">
+        <div class="role-emoji">${role.emoji}</div>
+        <div class="role-name">${role.name}</div>
+        <div class="role-points">${pNames[i]}</div>
+      </div>`;
+    }else{
+      cardsHTML+=`<div class="role-card ${canSelect?"selectable":"facedown"}" ${canSelect?`onclick="sipahiGuess(${i})"`:""}">
+        <div class="role-emoji">🎴</div>
+        <div class="role-name">${pNames[i]}</div>
+      </div>`;
+    }
+  }
+  cardsHTML+=`</div>`;
+
+  // Phase instructions
+  let phaseText="";
+  if(S.phase==="deal")phaseText="Dealing cards...";
+  else if(S.phase==="reveal-raja")phaseText=`${ROLES[0].emoji} Raja revealed! ${pNames[S.rajaPlayer]} is the King!`;
+  else if(S.phase==="sipahi-guess"){
+    phaseText=`💂 Sipahi (${pNames[S.sipahiPlayer]}) must find the Chor! Tap a face-down card.`;
+  }else if(S.phase==="result"){
+    if(S.roundResult==="caught")phaseText="💂 Sipahi caught the Chor! 🦹 +600 to Sipahi";
+    else phaseText="🦹 Chor escaped! +600 to Chor, Sipahi gets 0";
+  }
+
+  let h=`
+  <div style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:380px;margin-bottom:4px">
+    <div><div class="title" style="font-size:20px">👑 ராஜா ராணி</div><div style="color:#a06080;font-size:9px">${isOn?"🌐 "+S.roomCode:isAI?"vs AI":"PvP"}</div></div>
+    <div style="font-size:12px;color:#c4466e;font-weight:700">${turnText}</div>
+  </div>
+  <div class="score-bar">
+    <div class="score-badge on">🏆 ${p0Label}: ${S.scores[0]}</div>
+    <div class="score-badge on">🏆 ${p1Label}: ${S.scores[1]}</div>
+  </div>
+  <div class="info-box">${phaseText}</div>
+  ${cardsHTML}
+  ${S.phase==="result"?`
+    <div class="result-box">
+      <p style="font-size:14px;font-weight:700;color:#ffd93d;margin-bottom:6px">${S.roundResult==="caught"?"✅ Chor Caught!":"❌ Wrong Guess!"}</p>
+      <p style="font-size:12px;margin-bottom:4px">👑 Raja (${pNames[S.rajaPlayer]}): +1000</p>
+      <p style="font-size:12px;margin-bottom:4px">👸 Rani (${pNames[S.raniPlayer]}): +800</p>
+      <p style="font-size:12px;margin-bottom:4px">💂 Sipahi (${pNames[S.sipahiPlayer]}): +${S.roundResult==="caught"?600:0}</p>
+      <p style="font-size:12px">🦹 Chor (${pNames[S.chorPlayer]}): +${S.roundResult==="caught"?0:600}</p>
+    </div>
+    ${!S.gameOver?`<button class="btn-primary" onclick="nextRound()">Next Round →</button>`:""}
+  `:""}
+  <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center">
+    ${S.gameOver?`<button class="btn-primary" onclick="${isOn?"leaveOnlineMatchToMode()":"resetState();S.gameMode='"+S.gameMode+"';S.screen='game';startGame()"}">New Game</button>`:""}
+    <button class="btn" onclick="S.showRules=!S.showRules;render()">${S.showRules?"Hide":"Rules"}</button>
+    ${!isOn?`<button class="btn" onclick="resetState();S.screen='mode';render()">Mode</button>`:`<button class="btn" onclick="leaveOnlineMatchToMode()">Leave</button>`}
+  </div>
+  ${S.showRules?`<div class="rules-box">
+    <p style="font-weight:700;color:#ff6b9d;margin-bottom:6px">How to Play</p>
+    <p style="margin-bottom:5px">4 role cards are shuffled and dealt: 👑Raja, 👸Rani, 💂Sipahi, 🦹Chor.</p>
+    <p style="margin-bottom:5px">The Raja is revealed first. Then Sipahi must guess who the Chor is.</p>
+    <p style="margin-bottom:5px">👑 Raja always gets 1000 points, 👸 Rani gets 800.</p>
+    <p style="margin-bottom:5px">If Sipahi catches the Chor: 💂+600, 🦹+0</p>
+    <p>If Sipahi guesses wrong: 🦹+600, 💂+0</p>
+  </div>`:""}`;
+  app.innerHTML=h;
+}
+
+/* ═══ INIT ═══ */
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  const roomCode=params.get("room");
+  if(roomCode&&roomCode.length===4){
+    S.joinCode=roomCode.toUpperCase();S.screen="online";render();
+    setTimeout(()=>joinRoom(roomCode),500);
+    window.history.replaceState({},"",window.location.pathname);return;
+  }
+  render();
+})();
+</script>
+</body>
+</html>

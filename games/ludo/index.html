@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#1a2040">
+<title>Ludo — J4F</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(180deg,#1a2040,#0d1225);color:#c0c8e0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#app{height:100dvh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;align-items:center;padding:12px 10px 100px}
+.title{color:#4d96ff;font-size:26px;font-weight:700;letter-spacing:2px;text-shadow:0 2px 8px rgba(77,150,255,.3)}
+.subtitle{color:#6080a0;font-size:12px;letter-spacing:2px}
+.btn{padding:8px 14px;background:rgba(20,30,60,.6);color:#c0c8e0;border:1px solid #4d72c8;border-radius:10px;font:600 11px -apple-system,sans-serif;cursor:pointer}
+.btn-primary{padding:9px 18px;background:linear-gradient(135deg,#4d72c8,#2a3a6b);color:#fff;border:none;border-radius:10px;font:700 13px -apple-system,sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(77,114,200,.4)}
+.card{background:linear-gradient(145deg,#1a2a50,#0f1830);border:2px solid #4d72c8;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;width:100%}
+.error-box{color:#ff6b6b;font-size:12px;font-weight:600;background:rgba(255,50,50,.15);padding:8px 14px;border-radius:8px;border:1px solid rgba(255,50,50,.3);text-align:center;width:100%}
+.screen{width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.btn-wa{padding:12px 20px;background:linear-gradient(135deg,#1a5c2e,#0f3d1e);color:#4ade80;border:2px solid #2a8c4a;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.btn-copy{padding:12px 20px;background:linear-gradient(135deg,#2a1a4a,#1a0e30);color:#b39ddb;border:2px solid #6b45a0;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.join-input{width:100%;max-width:160px;padding:12px;font:800 24px -apple-system,sans-serif;text-align:center;letter-spacing:8px;background:rgba(0,0,0,.3);color:#4d96ff;border:2px solid #4d72c8;border-radius:10px;outline:none;text-transform:uppercase}
+.room-code-display{background:rgba(0,0,0,.4);border:3px solid #4d96ff;border-radius:16px;padding:24px 36px;text-align:center}
+.room-code-text{color:#4d96ff;font-size:48px;font-weight:800;letter-spacing:12px}
+.share-row{display:flex;gap:8px;width:100%;max-width:320px}
+.score-bar{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:380px;margin-bottom:6px}
+.score-badge{padding:5px 10px;border-radius:8px;font:700 12px -apple-system,sans-serif;border:2px solid transparent;transition:all .3s}
+.score-badge.on{background:linear-gradient(135deg,#4d72c8,#2a3a6b);color:#fff;border-color:#4d96ff;box-shadow:0 0 10px rgba(77,150,255,.3)}
+.score-badge.off{background:rgba(20,30,60,.6);color:#c0c8e0}
+.turn-text{font-size:12px;text-align:center}
+.timer-ring{position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.timer-ring svg{position:absolute;transform:rotate(-90deg)}
+.timer-num{font-weight:800;z-index:1}
+.info-box{background:rgba(0,0,0,.3);border:1px solid #4d72c8;border-radius:10px;padding:8px 14px;font-size:12px;text-align:center;width:100%}
+.rules-box{margin-top:10px;background:rgba(10,15,35,.9);border:1px solid #4d72c8;border-radius:12px;padding:12px 14px;max-width:380px;width:100%;font-size:12px;line-height:1.5}
+
+/* Ludo Board */
+.ludo-board{width:320px;height:320px;position:relative;background:rgba(255,255,255,.05);border-radius:12px;border:2px solid rgba(255,255,255,.1);margin:8px auto}
+.ludo-cell{position:absolute;width:20px;height:20px;border-radius:4px;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .15s}
+.ludo-cell.path{background:rgba(255,255,255,.08)}
+.ludo-cell.home-red{background:rgba(255,80,80,.2);border-color:rgba(255,80,80,.3)}
+.ludo-cell.home-blue{background:rgba(80,80,255,.2);border-color:rgba(80,80,255,.3)}
+.ludo-cell.safe{background:rgba(255,217,61,.15);border-color:rgba(255,217,61,.3)}
+.ludo-cell.selectable{cursor:pointer;box-shadow:0 0 8px rgba(255,217,61,.5);border-color:#ffd93d}
+.token{width:16px;height:16px;border-radius:50%;display:inline-block;border:2px solid rgba(255,255,255,.5);cursor:pointer;transition:all .15s}
+.token.red{background:linear-gradient(135deg,#ff4444,#cc2222)}
+.token.blue{background:linear-gradient(135deg,#4444ff,#2222cc)}
+.token.selectable{box-shadow:0 0 8px rgba(255,217,61,.6);border-color:#ffd93d;cursor:pointer}
+.token.ghost{opacity:.4}
+
+/* Dice */
+.dice-area{display:flex;align-items:center;justify-content:center;gap:12px;margin:8px 0}
+.dice{width:52px;height:52px;background:linear-gradient(145deg,#fff,#e8e8e8);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3);transition:transform .15s;border:2px solid rgba(0,0,0,.1)}
+.dice:active{transform:scale(.9)}
+.dice.rolling{animation:diceRoll .4s ease}
+.dice.disabled{opacity:.5;cursor:default}
+@keyframes diceRoll{0%{transform:rotate(0)}25%{transform:rotate(15deg) scale(1.1)}50%{transform:rotate(-10deg)}75%{transform:rotate(5deg)}100%{transform:rotate(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes dotBlink{0%,20%{opacity:0}50%{opacity:1}100%{opacity:0}}
+@keyframes timerPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.anim-pulse{animation:pulse 1.5s ease infinite}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/j4f-sdk.js"></script>
+<script>
+const GAME_ID="ludo";
+const TURN_TIME=15,FORFEIT_TIMEOUT=20;
+const DICE_FACES=["","⚀","⚁","⚂","⚃","⚄","⚅"];
+
+/*
+  Simplified 2-player Ludo:
+  - Each player has 4 tokens
+  - 52 shared path cells + 5 home-stretch cells per player
+  - Roll 6 to enter the board
+  - Land on opponent = send them home
+  - First to get all 4 tokens to finish wins
+*/
+
+// Path: 28 cells per half-loop, total 52 shared cells
+// Player 0 (Red) starts at position 0, home stretch at 50-54, finish at 55
+// Player 1 (Blue) starts at position 26, home stretch at 24-28(relative), finish at 29(relative)
+
+const PATH_LEN=52;
+const HOME_STRETCH=5;
+
+// Board positions for the path (x,y pairs for rendering)
+function buildPathCoords(){
+  const c=[];
+  const s=20,o=10; // cell size, offset
+  // Bottom row right (0-5)
+  for(let i=0;i<6;i++)c.push([170+i*s,170]);
+  // Right column up (6-11)
+  for(let i=0;i<6;i++)c.push([280,150-i*s]);
+  // Top row right to center (12)
+  c.push([280,30]);
+  // Top row left (13-18)
+  for(let i=0;i<6;i++)c.push([260-i*s,10]);
+  // Left column down (19-24)
+  for(let i=0;i<6;i++)c.push([140,30+i*s]);
+  // Center row left (25)
+  c.push([140,150]);
+  // Bottom row left to center (26-31)
+  for(let i=0;i<6;i++)c.push([120-i*s,170]);
+  // Left col down (32-37)
+  for(let i=0;i<6;i++)c.push([10,190+i*s]);
+  // Bottom-left corner (38)
+  c.push([10,310]);
+  // Bottom row right (39-44)
+  for(let i=0;i<6;i++)c.push([30+i*s,310]);
+  // Right col up (45-50)
+  for(let i=0;i<6;i++)c.push([150,290-i*s]);
+  // Center entry (51)
+  c.push([150,170]);
+  return c;
+}
+const PATH_COORDS=buildPathCoords();
+
+// Home stretch coords (player 0: enters from bottom center going up)
+const HOME0_COORDS=[[150,290],[150,270],[150,250],[150,230],[150,210]];
+// Home stretch coords (player 1: enters from top center going down)
+const HOME1_COORDS=[[150,30],[150,50],[150,70],[150,90],[150,110]];
+
+// Base (home) coords for tokens not on board
+const BASE0_COORDS=[[50,220],[90,220],[50,260],[90,260]];
+const BASE1_COORDS=[[210,40],[250,40],[210,80],[250,80]];
+
+const SAFE_POSITIONS=[0,13,26,39]; // Safe cells where you can't be captured
+
+function initState(){
+  return{
+    tokens:[[{pos:-1,done:false},{pos:-1,done:false},{pos:-1,done:false},{pos:-1,done:false}],
+            [{pos:-1,done:false},{pos:-1,done:false},{pos:-1,done:false},{pos:-1,done:false}]],
+    cp:0, dice:0, rolled:false, extraTurn:false,
+    gameOver:false, winner:null
+  };
+}
+
+const S={
+  screen:"mode",gameMode:null,aiDiff:"medium",
+  ...initState(),
+  selectedToken:-1, validMoves:[],
+  anim:false,timeLeft:TURN_TIME,timedOut:false,aiThink:false,
+  roomCode:"",joinCode:"",myPlayer:0,isOnline:false,opJoined:false,onlineErr:"",
+  leavePrompt:false,waitingReconnect:false,reconnectLeft:FORFEIT_TIMEOUT,reconnectWinner:null,isLeaving:false,
+  showRules:false,inviteMsg:"",searching:false,searchMsg:"",
+};
+let timerIv=null,autoTo=null,seenMoveId=0,cancelMatchmake=null,reconnectIv=null;
+
+function resetState(){
+  stopTimer();stopReconnectTimer();
+  if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
+  const init=initState();
+  Object.assign(S,init,{selectedToken:-1,validMoves:[],screen:S.screen,
+    anim:false,timeLeft:TURN_TIME,timedOut:false,aiThink:false,
+    gameMode:null,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",
+    leavePrompt:false,waitingReconnect:false,reconnectLeft:FORFEIT_TIMEOUT,reconnectWinner:null,isLeaving:false,
+    showRules:false,inviteMsg:"",searching:false,searchMsg:""});
+  seenMoveId=0;
+}
+
+/* Absolute position on the shared path for a player's token */
+function absPos(player,relPos){
+  return(relPos+player*26)%PATH_LEN;
+}
+
+/* Check if a token can move with given dice roll */
+function canMove(player,tokenIdx,dice,tokens){
+  const tk=tokens[player][tokenIdx];
+  if(tk.done)return false;
+  if(tk.pos===-1)return dice===6; // Need 6 to enter
+  const newPos=tk.pos+dice;
+  if(newPos>PATH_LEN+HOME_STRETCH)return false; // Overshoot
+  // Check if another own token is at that position
+  const abs=newPos<=PATH_LEN-1?absPos(player,newPos):-1;
+  for(let i=0;i<4;i++){
+    if(i===tokenIdx)continue;
+    const otk=tokens[player][i];
+    if(otk.pos===-1||otk.done)continue;
+    if(newPos>=PATH_LEN){if(otk.pos===newPos)return false}
+    else{if(absPos(player,otk.pos)===abs)return false}
+  }
+  return true;
+}
+
+function getValidMoves(player,dice,tokens){
+  const moves=[];
+  for(let i=0;i<4;i++){if(canMove(player,i,dice,tokens))moves.push(i)}
+  return moves;
+}
+
+function moveToken(player,tokenIdx,dice){
+  const tk=S.tokens[player][tokenIdx];
+  let captured=false;
+  S.extraTurn=false;
+
+  if(tk.pos===-1){
+    // Enter board
+    tk.pos=0;
+    // Check capture at start
+    const abs=absPos(player,0);
+    const opp=1-player;
+    for(let i=0;i<4;i++){
+      const otk=S.tokens[opp][i];
+      if(otk.pos===-1||otk.done)continue;
+      if(absPos(opp,otk.pos)===abs&&!SAFE_POSITIONS.includes(abs)){
+        otk.pos=-1;captured=true;
+      }
+    }
+  }else{
+    const newPos=tk.pos+dice;
+    if(newPos===PATH_LEN+HOME_STRETCH){
+      // Reached finish!
+      tk.pos=newPos;tk.done=true;
+    }else if(newPos>=PATH_LEN){
+      // In home stretch
+      tk.pos=newPos;
+    }else{
+      tk.pos=newPos;
+      // Check capture
+      const abs=absPos(player,newPos);
+      if(!SAFE_POSITIONS.includes(abs)){
+        const opp=1-player;
+        for(let i=0;i<4;i++){
+          const otk=S.tokens[opp][i];
+          if(otk.pos===-1||otk.done)continue;
+          if(absPos(opp,otk.pos)===abs){otk.pos=-1;captured=true}
+        }
+      }
+    }
+  }
+
+  // Extra turn on 6 or capture
+  if(dice===6||captured)S.extraTurn=true;
+
+  // Check win
+  if(S.tokens[player].every(t=>t.done)){
+    S.gameOver=true;S.winner=player;stopTimer();
+    if(S.isOnline){
+      const r=S.winner===S.myPlayer?"win":"loss";
+      J4F.leaderboard.submit(GAME_ID,r).catch(()=>{});
+      J4F.room.finish(S.winner).catch(()=>{});
+    }else if(S.gameMode==="ai"){
+      const r=S.winner===0?"win":"loss";
+      J4F.leaderboard.submit(GAME_ID,r).catch(()=>{});
+    }
+  }
+
+  S.selectedToken=-1;S.validMoves=[];S.rolled=false;S.dice=0;
+
+  if(!S.gameOver){
+    if(!S.extraTurn)S.cp=1-player;
+    // Next turn
+    if(S.gameMode==="ai"&&S.cp===1)scheduleAI();
+    else if(S.isOnline&&S.cp!==S.myPlayer){}
+    else startTimer();
+  }
+
+  if(S.isOnline&&player===S.myPlayer){
+    J4F.room.sendMoveAndState({tokenIdx,dice,player},{tokens:S.tokens,cp:S.cp,gameOver:S.gameOver,winner:S.winner,extraTurn:S.extraTurn}).catch(()=>{});
+  }
+  render();
+}
+
+function rollDice(){
+  if(S.rolled||S.anim||S.gameOver||S.waitingReconnect)return;
+  if(S.isOnline&&S.cp!==S.myPlayer)return;
+  if(S.gameMode==="ai"&&S.cp===1)return;
+
+  stopTimer();
+  S.dice=Math.floor(Math.random()*6)+1;
+  S.rolled=true;
+  S.validMoves=getValidMoves(S.cp,S.dice,S.tokens);
+
+  if(S.validMoves.length===0){
+    // No valid moves, pass turn
+    setTimeout(()=>{
+      S.rolled=false;S.dice=0;
+      if(S.dice!==6)S.cp=1-S.cp;
+      if(S.gameMode==="ai"&&S.cp===1)scheduleAI();
+      else if(S.isOnline&&S.cp!==S.myPlayer){}
+      else startTimer();
+      if(S.isOnline){
+        J4F.room.sendMoveAndState({tokenIdx:-1,dice:S.dice,player:S.cp},{tokens:S.tokens,cp:S.cp,gameOver:S.gameOver,winner:S.winner}).catch(()=>{});
+      }
+      render();
+    },800);
+  }else if(S.validMoves.length===1){
+    setTimeout(()=>moveToken(S.cp,S.validMoves[0],S.dice),300);
+  }
+  render();
+}
+
+function selectToken(idx){
+  if(!S.rolled||!S.validMoves.includes(idx))return;
+  moveToken(S.cp,idx,S.dice);
+}
+
+function scheduleAI(){
+  S.aiThink=true;render();
+  setTimeout(()=>{
+    S.aiThink=false;
+    // AI rolls dice
+    S.dice=Math.floor(Math.random()*6)+1;
+    S.rolled=true;
+    S.validMoves=getValidMoves(1,S.dice,S.tokens);
+    if(S.validMoves.length===0){
+      S.rolled=false;S.dice=0;S.cp=0;startTimer();render();return;
+    }
+    render();
+    setTimeout(()=>{
+      // AI picks move
+      let pick=S.validMoves[0];
+      if(S.aiDiff!=="easy"){
+        // Prefer captures, then advancing furthest token
+        let best=-1,bestScore=-Infinity;
+        for(const idx of S.validMoves){
+          const tk=S.tokens[1][idx];
+          let score=tk.pos+S.dice;
+          // Check for capture
+          const newPos=tk.pos===-1?0:tk.pos+S.dice;
+          if(newPos<PATH_LEN){
+            const abs=absPos(1,newPos);
+            for(let i=0;i<4;i++){
+              if(S.tokens[0][i].pos!==-1&&!S.tokens[0][i].done&&absPos(0,S.tokens[0][i].pos)===abs)score+=20;
+            }
+          }
+          if(newPos===PATH_LEN+HOME_STRETCH)score+=30;
+          if(S.aiDiff==="medium")score+=Math.random()*5;
+          if(score>bestScore){bestScore=score;best=idx}
+        }
+        pick=best>=0?best:S.validMoves[0];
+      }else{
+        pick=S.validMoves[Math.floor(Math.random()*S.validMoves.length)];
+      }
+      moveToken(1,pick,S.dice);
+    },500);
+  },600+Math.random()*400);
+}
+
+function autoMove(){
+  if(S.gameOver||S.waitingReconnect)return;
+  rollDice();
+}
+
+/* ═══ TIMER ═══ */
+function startTimer(){
+  stopTimer();S.timeLeft=TURN_TIME;S.timedOut=false;
+  let t=TURN_TIME;
+  timerIv=setInterval(()=>{
+    t--;S.timeLeft=t;
+    if(t<=0){stopTimer();S.timedOut=true;autoTo=setTimeout(autoMove,600)}
+    render();
+  },1000);
+}
+function stopTimer(){if(timerIv){clearInterval(timerIv);timerIv=null}if(autoTo){clearTimeout(autoTo);autoTo=null}}
+function stopReconnectTimer(){if(reconnectIv){clearInterval(reconnectIv);reconnectIv=null}}
+function clearReconnectWait(){stopReconnectTimer();S.waitingReconnect=false;S.reconnectLeft=FORFEIT_TIMEOUT;S.reconnectWinner=null}
+function startReconnectTimer(winner){
+  if(S.gameOver||S.waitingReconnect)return;
+  S.waitingReconnect=true;S.reconnectWinner=winner;S.reconnectLeft=FORFEIT_TIMEOUT;stopTimer();stopReconnectTimer();
+  reconnectIv=setInterval(()=>{S.reconnectLeft--;if(S.reconnectLeft<=0){stopReconnectTimer();S.waitingReconnect=false;S.gameOver=true;S.winner=winner;J4F.room.finish(winner).catch(()=>{})}render()},1000);
+}
+
+/* ═══ ONLINE ═══ */
+async function createRoom(){
+  S.onlineErr="";
+  try{
+    const st=initState();
+    const{code}=await J4F.room.create(GAME_ID,{tokens:st.tokens,cp:0,gameOver:false,winner:null});
+    S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;S.gameMode="online";
+    Object.assign(S,st);seenMoveId=0;S.screen="lobby";render();setupHostListener();
+  }catch(e){S.onlineErr="Failed: "+(e.message||e);render()}
+}
+async function joinRoom(codeOverride){
+  S.onlineErr="";const code=(codeOverride||S.joinCode).toUpperCase().trim();
+  if(code.length!==4){S.onlineErr="Enter a 4-letter code";render();return}
+  try{
+    const{roomData}=await J4F.room.join(code);
+    S.roomCode=code;S.myPlayer=1;S.isOnline=true;S.opJoined=true;
+    const st=roomData.state||{};
+    if(st.tokens)S.tokens=st.tokens;S.cp=st.cp||0;
+    S.gameOver=false;S.winner=null;seenMoveId=0;
+    S.gameMode="online";S.screen="game";render();setupGuestListener();
+    if(S.cp===S.myPlayer)startTimer();
+  }catch(e){S.onlineErr=e.message||"Failed to join";render()}
+}
+function searchOnline(){
+  S.searching=true;S.onlineErr="";render();
+  const st=initState();
+  cancelMatchmake=J4F.room.matchmake(GAME_ID,{tokens:st.tokens,cp:0,gameOver:false,winner:null},
+    (code,player,roomData)=>{
+      cancelMatchmake=null;S.searching=false;S.roomCode=code;S.myPlayer=player;S.isOnline=true;S.gameMode="online";
+      Object.assign(S,st);seenMoveId=0;
+      if(player===0){S.opJoined=false;S.screen="lobby";render();setupHostListener()}
+      else{if(roomData?.state?.tokens)S.tokens=roomData.state.tokens;S.cp=roomData?.state?.cp||0;S.opJoined=true;S.screen="game";render();setupGuestListener();if(S.cp===S.myPlayer)startTimer()}
+    },
+    (msg)=>{cancelMatchmake=null;S.searching=false;S.onlineErr=msg;S.screen="online";render()}
+  );
+}
+function cancelSearch(){if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}S.searching=false;render()}
+function handlePresenceUpdate(data){
+  if(!S.isOnline||S.gameOver||!S.opJoined||S.screen!=="game")return;
+  const me=S.myPlayer===0?"host":"guest",opp=S.myPlayer===0?"guest":"host";
+  if(!data?.presence?.[me]?.online)return;
+  if(!data?.presence?.[opp]?.online)startReconnectTimer(S.myPlayer);
+  else if(S.waitingReconnect)clearReconnectWait();
+}
+function setupHostListener(){
+  J4F.room.onUpdate(data=>{
+    if(S.isLeaving)return;
+    if(!S.opJoined&&data.guest&&data.status==="playing"){S.opJoined=true;S.screen="game";render();startTimer();return}
+    if(data.status==="finished"&&typeof data.winner==="number"&&!S.gameOver){clearReconnectWait();S.gameOver=true;S.winner=data.winner;stopTimer();render();return}
+    handlePresenceUpdate(data);
+    if(data.moveId>seenMoveId&&data.state){seenMoveId=data.moveId;S.tokens=data.state.tokens;S.cp=data.state.cp;S.gameOver=data.state.gameOver||false;S.winner=data.state.winner;S.rolled=false;S.dice=0;S.validMoves=[];if(S.gameOver)stopTimer();else if(S.cp===S.myPlayer)startTimer();render()}
+  });
+}
+function setupGuestListener(){
+  J4F.room.onUpdate(data=>{
+    if(S.isLeaving)return;
+    if(data.status==="finished"&&typeof data.winner==="number"&&!S.gameOver){clearReconnectWait();S.gameOver=true;S.winner=data.winner;stopTimer();render();return}
+    handlePresenceUpdate(data);
+    if(data.moveId>seenMoveId&&data.state){seenMoveId=data.moveId;S.tokens=data.state.tokens;S.cp=data.state.cp;S.gameOver=data.state.gameOver||false;S.winner=data.state.winner;S.rolled=false;S.dice=0;S.validMoves=[];if(S.gameOver)stopTimer();else if(S.cp===S.myPlayer)startTimer();render()}
+  });
+}
+async function leaveOnlineMatchToMode(){
+  if(S.isLeaving)return;stopTimer();stopReconnectTimer();S.isLeaving=true;
+  try{await J4F.room.leave()}catch(e){}
+  resetState();S.screen="mode";S.isLeaving=false;render();
+}
+
+function shareWA(code){const base=window.location.origin+"/games/ludo/";const url=code?base+"?room="+code:base;J4F.share.whatsapp(code?"🎲 Join my Ludo game on J4F!\n\nTap to play: "+url:"🎲 Let's play Ludo on J4F!\n\nPlay here: "+url)}
+async function shareCopy(code){const base=window.location.origin+"/games/ludo/";const url=code?base+"?room="+code:base;const ok=await J4F.share.copy(code?"Join my Ludo game!\nPlay: "+url:"Let's play Ludo!\nPlay: "+url);S.inviteMsg=ok?"Copied!":"Couldn't copy";render();setTimeout(()=>{S.inviteMsg="";render()},2000)}
+
+/* ═══ RENDER ═══ */
+const app=document.getElementById("app");
+function render(){
+  if(S.screen==="mode")renderMode();
+  else if(S.screen==="online")renderOnline();
+  else if(S.screen==="searching")renderSearching();
+  else if(S.screen==="lobby")renderLobby();
+  else if(S.screen==="game")renderGame();
+}
+
+function renderMode(){
+  const diffs=[{id:"easy",l:"Easy",e:"😊",d:"AI plays randomly",c:"#4CAF50"},{id:"medium",l:"Medium",e:"🧠",d:"AI thinks ahead",c:"#FF9800"},{id:"hard",l:"Hard",e:"🔥",d:"AI plays optimally",c:"#f44336"}];
+  let h=`<div class="screen" style="padding-top:20px">
+    <div class="title">🎲 லூடோ</div>
+    <div class="subtitle">LUDO</div>
+    <a href="/" style="color:#4d96ff;font-size:11px;text-decoration:none;margin-bottom:4px">← J4F Home</a>
+    <div class="card" onclick="resetState();S.gameMode='pvp';S.screen='game';render();startTimer()">
+      <div style="font-size:32px">👥</div>
+      <div style="flex:1"><div style="color:#4d96ff;font-weight:700;font-size:15px">Local 2 Player</div><div style="color:#6080a0;font-size:11px">🔴 Red vs 🔵 Blue · ⏱️ ${TURN_TIME}s turns</div></div>
+    </div>
+    <div class="card" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.onlineErr='';S.joinCode='';S.screen='online';render()">
+      <div style="font-size:32px">🌐</div>
+      <div style="flex:1"><div style="color:#5bc0de;font-weight:700;font-size:15px">Online Multiplayer</div><div style="color:#7ab8d4;font-size:11px">Play with a friend remotely</div></div>
+    </div>
+    <p style="font-size:13px;font-weight:600;margin:8px 0 0">🤖 Play vs AI (You = 🔴 Red)</p>`;
+  diffs.forEach(d=>{h+=`<div class="card" onclick="resetState();S.gameMode='ai';S.aiDiff='${d.id}';S.screen='game';render();startTimer()"><div style="font-size:26px">${d.e}</div><div style="flex:1"><div style="color:${d.c};font-weight:700;font-size:14px">${d.l}</div><div style="color:#6080a0;font-size:11px">${d.d}</div></div></div>`});
+  h+=`</div>`;app.innerHTML=h;
+}
+
+function renderOnline(){
+  let h=`<div class="screen" style="padding-top:20px;justify-content:center">
+    <div class="title" style="font-size:24px">🎲 Ludo</div>
+    <p style="color:#5bc0de;font-size:15px;font-weight:600">🌐 Online Play</p>
+    <button class="card" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.screen='searching';searchOnline()"><div style="font-size:28px">🔍</div><div style="flex:1"><div style="color:#5bc0de;font-weight:700">Search Online</div></div></button>
+    <button class="card" style="background:linear-gradient(145deg,#1a4a2a,#0f3018);border-color:#2a8c4a" onclick="createRoom()"><div style="font-size:28px">👫</div><div style="flex:1"><div style="color:#4ade80;font-weight:700">Send to Friends</div></div></button>
+    <div style="color:#4d72c8;font-size:11px;letter-spacing:2px;margin:4px">── HAVE A CODE? ──</div>
+    <div style="width:100%;background:rgba(0,0,0,.3);border:2px solid #4d72c8;border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px;justify-content:center">
+      <input class="join-input" type="text" maxlength="4" placeholder="ABCD" style="max-width:120px;padding:8px;font-size:20px" value="${S.joinCode}" oninput="S.joinCode=this.value.toUpperCase()">
+      <button class="btn-primary" onclick="joinRoom()">Join</button>
+    </div>
+    ${S.onlineErr?`<div class="error-box">⚠️ ${S.onlineErr}</div>`:""}
+    <button class="btn" onclick="S.screen='mode';render()">← Back</button>
+  </div>`;app.innerHTML=h;
+}
+function renderSearching(){
+  let h=`<div class="screen" style="padding-top:40px;align-items:center">
+    <div class="title" style="font-size:24px">🎲 Ludo</div>
+    <div style="font-size:48px;margin:20px">🔍</div>
+    <p style="color:#5bc0de;font-size:16px;font-weight:700">Searching for opponent</p>
+    <div class="anim-pulse" style="color:#7ab8d4;font-size:14px">Looking for players<span style="display:inline-flex;gap:2px"><span style="animation:dotBlink 1.4s ease infinite">.</span><span style="animation:dotBlink 1.4s ease infinite .2s">.</span><span style="animation:dotBlink 1.4s ease infinite .4s">.</span></span></div>
+    <button class="btn" style="margin-top:20px" onclick="cancelSearch();S.screen='online';render()">Cancel</button>
+  </div>`;app.innerHTML=h;
+}
+function renderLobby(){
+  let h=`<div class="screen" style="padding-top:20px;align-items:center">
+    <div class="title" style="font-size:24px">🎲 Ludo</div>
+    <div class="room-code-display"><div style="color:#6080a0;font-size:11px;letter-spacing:2px;margin-bottom:6px">ROOM CODE</div><div class="room-code-text">${S.roomCode}</div></div>
+    <div class="anim-pulse" style="color:#5bc0de;font-size:14px">Waiting for opponent<span style="display:inline-flex;gap:2px"><span style="animation:dotBlink 1.4s ease infinite">.</span><span style="animation:dotBlink 1.4s ease infinite .2s">.</span><span style="animation:dotBlink 1.4s ease infinite .4s">.</span></span></div>
+    <div class="share-row" style="margin-top:12px">
+      <button class="btn-wa" style="flex:1;padding:10px;font-size:12px" onclick="shareWA('${S.roomCode}')">💬 WhatsApp</button>
+      <button class="btn-copy" style="flex:1;padding:10px;font-size:12px" onclick="shareCopy('${S.roomCode}')">📋 Copy${S.inviteMsg?" ✓":""}</button>
+    </div>
+    <button class="btn" style="margin-top:12px" onclick="leaveOnlineMatchToMode()">Cancel</button>
+  </div>`;app.innerHTML=h;
+}
+
+function renderGame(){
+  const isAI=S.gameMode==="ai",isOn=S.gameMode==="online";
+  const myTurn=isOn?S.cp===S.myPlayer:(isAI?S.cp===0:true);
+  const showTimer=!S.rolled&&!S.gameOver&&!S.waitingReconnect&&myTurn&&!(isAI&&S.cp===1);
+
+  let turnText="";
+  if(S.gameOver){
+    if(isOn)turnText=S.winner===S.myPlayer?"You Win! 🎉":"You Lost 😤";
+    else if(isAI)turnText=S.winner===0?"You Win! 🎉":"AI Wins 😤";
+    else turnText=S.winner===0?"Red Wins! 🔴":"Blue Wins! 🔵";
+  }else{
+    const pName=isOn?(S.cp===S.myPlayer?"Your":"Opponent's"):isAI?(S.cp===0?"Your":"AI's"):(S.cp===0?"Red's":"Blue's");
+    turnText=pName+" Turn";
+  }
+
+  let timerHTML="";
+  if(showTimer){
+    const r=18,circ=2*Math.PI*r,off=circ*(1-S.timeLeft/TURN_TIME);
+    const col=S.timeLeft<=3?"#ff4444":S.timeLeft<=5?"#ff8c00":"#4d96ff";
+    timerHTML=`<div class="timer-ring"><svg width="44" height="44"><circle cx="22" cy="22" r="${r}" fill="none" stroke="rgba(40,50,100,.3)" stroke-width="3.5"/><circle cx="22" cy="22" r="${r}" fill="none" stroke="${col}" stroke-width="3.5" stroke-dasharray="${circ}" stroke-dashoffset="${off}" stroke-linecap="round" style="transition:stroke-dashoffset .3s"/></svg><span class="timer-num" style="font-size:${S.timeLeft<=3?18:16}px;color:${col}">${S.timeLeft}</span></div>`;
+  }else if(S.aiThink){timerHTML=`<div style="color:#4d96ff;font-size:12px" class="anim-pulse">🤖 Thinking...</div>`}
+  else if(isOn&&!myTurn&&!S.gameOver){timerHTML=`<div style="color:#5bc0de;font-size:11px" class="anim-pulse">⏳ Waiting...</div>`}
+  else if(S.gameOver){timerHTML=`<div style="font-size:22px">🏆</div>`}
+
+  // Token counts
+  const p0done=S.tokens[0].filter(t=>t.done).length;
+  const p1done=S.tokens[1].filter(t=>t.done).length;
+  const p0label=isOn?(S.myPlayer===0?"You":"Opponent"):isAI?"You":"Red";
+  const p1label=isOn?(S.myPlayer===1?"You":"Opponent"):isAI?"AI":"Blue";
+
+  // Render board as a simple visual representation
+  // Simple grid representation with token positions
+  let boardHTML=`<div style="position:relative;width:300px;height:300px;margin:4px auto;background:rgba(255,255,255,.03);border-radius:12px;border:2px solid rgba(255,255,255,.1)">`;
+
+  // Draw a simplified track
+  // Base areas
+  boardHTML+=`<div style="position:absolute;top:10px;right:10px;width:90px;height:90px;background:rgba(80,80,255,.1);border:2px solid rgba(80,80,255,.2);border-radius:10px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px;padding:8px">`;
+  for(let i=0;i<4;i++){
+    const tk=S.tokens[1][i];
+    if(tk.pos===-1&&!tk.done){
+      const sel=S.rolled&&S.validMoves.includes(i)&&S.cp===1&&myTurn;
+      boardHTML+=`<div class="token blue${sel?" selectable":""}" onclick="selectToken(${i})" style="width:20px;height:20px"></div>`;
+    }else{
+      boardHTML+=`<div class="token blue ghost" style="width:20px;height:20px"></div>`;
+    }
+  }
+  boardHTML+=`</div>`;
+
+  boardHTML+=`<div style="position:absolute;bottom:10px;left:10px;width:90px;height:90px;background:rgba(255,80,80,.1);border:2px solid rgba(255,80,80,.2);border-radius:10px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px;padding:8px">`;
+  for(let i=0;i<4;i++){
+    const tk=S.tokens[0][i];
+    if(tk.pos===-1&&!tk.done){
+      const sel=S.rolled&&S.validMoves.includes(i)&&S.cp===0&&myTurn;
+      boardHTML+=`<div class="token red${sel?" selectable":""}" onclick="selectToken(${i})" style="width:20px;height:20px"></div>`;
+    }else{
+      boardHTML+=`<div class="token red ghost" style="width:20px;height:20px"></div>`;
+    }
+  }
+  boardHTML+=`</div>`;
+
+  // Finish area
+  boardHTML+=`<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60px;height:60px;background:rgba(255,217,61,.1);border:2px solid rgba(255,217,61,.2);border-radius:50%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px;padding:4px;font-size:10px">🏠</div>`;
+
+  // Draw path cells with tokens
+  // Simplified circular path
+  const pathRadius=120;
+  const cx=150,cy=150;
+  for(let i=0;i<PATH_LEN;i++){
+    const angle=(i/PATH_LEN)*Math.PI*2-Math.PI/2;
+    const x=cx+Math.cos(angle)*pathRadius-8;
+    const y=cy+Math.sin(angle)*pathRadius-8;
+    const isSafe=SAFE_POSITIONS.includes(i);
+
+    // Check for tokens at this position
+    let tokenHTML="";
+    for(let p=0;p<2;p++){
+      for(let t=0;t<4;t++){
+        const tk=S.tokens[p][t];
+        if(tk.pos>=0&&!tk.done&&tk.pos<PATH_LEN&&absPos(p,tk.pos)===i){
+          const col=p===0?"red":"blue";
+          const sel=S.rolled&&S.validMoves.includes(t)&&S.cp===p&&myTurn;
+          tokenHTML+=`<div class="token ${col}${sel?" selectable":""}" onclick="selectToken(${t})" style="width:14px;height:14px;position:absolute;top:1px;left:1px"></div>`;
+        }
+      }
+    }
+
+    boardHTML+=`<div style="position:absolute;left:${x}px;top:${y}px;width:16px;height:16px;border-radius:${isSafe?'50%':'3px'};background:${isSafe?'rgba(255,217,61,.2)':'rgba(255,255,255,.06)'};border:1px solid ${isSafe?'rgba(255,217,61,.3)':'rgba(255,255,255,.1)'}">${tokenHTML}</div>`;
+  }
+
+  // Home stretch tokens
+  for(let p=0;p<2;p++){
+    for(let t=0;t<4;t++){
+      const tk=S.tokens[p][t];
+      if(tk.pos>=PATH_LEN&&!tk.done){
+        const stretch=tk.pos-PATH_LEN;
+        const col=p===0?"red":"blue";
+        const angle=p===0?Math.PI/2:-Math.PI/2;
+        const dist=pathRadius-stretch*20;
+        const x=cx+Math.cos(angle)*dist-7;
+        const y=cy+Math.sin(angle)*dist-7;
+        const sel=S.rolled&&S.validMoves.includes(t)&&S.cp===p&&myTurn;
+        boardHTML+=`<div class="token ${col}${sel?" selectable":""}" onclick="selectToken(${t})" style="width:14px;height:14px;position:absolute;left:${x}px;top:${y}px"></div>`;
+      }
+    }
+  }
+
+  boardHTML+=`</div>`;
+
+  // Dice
+  const canRoll=!S.rolled&&!S.gameOver&&!S.waitingReconnect&&myTurn&&!S.aiThink;
+  let diceHTML=`<div class="dice-area">
+    <div class="dice${canRoll?"":" disabled"}${S.rolled?" rolling":""}" onclick="${canRoll?"rollDice()":""}">
+      ${S.dice?DICE_FACES[S.dice]:"🎲"}
+    </div>
+    ${S.rolled&&S.validMoves.length>1?`<div style="color:#ffd93d;font-size:12px;font-weight:700">Tap a token to move</div>`:""}
+    ${S.rolled&&S.validMoves.length===0?`<div style="color:#ff8c00;font-size:12px">No moves available</div>`:""}
+  </div>`;
+
+  let h=`
+  <div style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:380px;margin-bottom:4px">
+    <div><div class="title" style="font-size:20px">🎲 Ludo</div><div style="color:#6080a0;font-size:9px">${isOn?"🌐 "+S.roomCode:isAI?"AI ("+S.aiDiff+")":"PvP"}</div></div>
+    ${timerHTML}
+  </div>
+  ${S.waitingReconnect?`<div style="color:#ff8c00;font-size:11px;font-weight:700;text-align:center">⚠️ Opponent disconnected · win in ${S.reconnectLeft}s</div>`:""}
+  <div class="score-bar">
+    <div class="score-badge ${S.cp===0&&!S.gameOver?"on":"off"}">🔴 ${p0label}: ${p0done}/4</div>
+    <div class="turn-text" style="${S.gameOver?"color:#4d96ff;font-weight:700":""}">${turnText}</div>
+    <div class="score-badge ${S.cp===1&&!S.gameOver?"on":"off"}">🔵 ${p1label}: ${p1done}/4</div>
+  </div>
+  ${diceHTML}
+  ${boardHTML}
+  <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center">
+    ${S.gameOver?`<button class="btn-primary" onclick="${isOn?"leaveOnlineMatchToMode()":"resetState();S.gameMode='"+S.gameMode+"';S.aiDiff='"+S.aiDiff+"';S.screen='game';render();startTimer()"}">New Game</button>`:""}
+    <button class="btn" onclick="S.showRules=!S.showRules;render()">${S.showRules?"Hide":"Rules"}</button>
+    ${!isOn?`<button class="btn" onclick="resetState();S.screen='mode';render()">Mode</button>`:`<button class="btn" onclick="S.leavePrompt=true;render()">Leave</button>`}
+  </div>
+  ${S.leavePrompt&&isOn?`<div class="rules-box" style="border-color:#ff8c00"><p style="font-weight:700;color:#ffb347;margin-bottom:6px">Leave this match?</p><div style="display:flex;gap:8px;justify-content:center"><button class="btn" onclick="S.leavePrompt=false;render()">Cancel</button><button class="btn" style="border-color:#ff8c00;color:#ffb347" onclick="leaveOnlineMatchToMode()">Confirm</button></div></div>`:""}
+  ${S.showRules?`<div class="rules-box">
+    <p style="font-weight:700;color:#4d96ff;margin-bottom:6px">How to Play Ludo</p>
+    <p style="margin-bottom:5px">🎲 Roll the dice to move your tokens around the board.</p>
+    <p style="margin-bottom:5px">Roll a 6 to bring a token out of base onto the board.</p>
+    <p style="margin-bottom:5px">Land on opponent's token to send it back to their base.</p>
+    <p style="margin-bottom:5px">⭐ Safe spots (marked) protect tokens from capture.</p>
+    <p style="margin-bottom:5px">Roll a 6 or capture = extra turn!</p>
+    <p>🏠 First to get all 4 tokens home wins!</p>
+  </div>`:""}`;
+  app.innerHTML=h;
+}
+
+/* ═══ INIT ═══ */
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  const roomCode=params.get("room");
+  if(roomCode&&roomCode.length===4){
+    S.joinCode=roomCode.toUpperCase();S.screen="online";render();
+    setTimeout(()=>joinRoom(roomCode),500);
+    window.history.replaceState({},"",window.location.pathname);return;
+  }
+  render();
+})();
+</script>
+</body>
+</html>
