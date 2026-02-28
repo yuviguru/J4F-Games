@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#2a1a08">
+<title>Donkey — J4F</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(180deg,#2a1a08,#150d04);color:#d4b896;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#app{height:100dvh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;align-items:center;padding:12px 10px 100px}
+.title{color:#c49a46;font-size:26px;font-weight:700;letter-spacing:2px;text-shadow:0 2px 8px rgba(196,154,70,.3)}
+.subtitle{color:#8a7a56;font-size:12px;letter-spacing:2px}
+.btn{padding:8px 14px;background:rgba(40,25,8,.6);color:#d4b896;border:1px solid #8b7a46;border-radius:10px;font:600 11px -apple-system,sans-serif;cursor:pointer}
+.btn-primary{padding:9px 18px;background:linear-gradient(135deg,#8b7a46,#5a4a20);color:#fff;border:none;border-radius:10px;font:700 13px -apple-system,sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(139,122,70,.4)}
+.card-ui{background:linear-gradient(145deg,#3a2a10,#1f1508);border:2px solid #8b7a46;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;width:100%}
+.error-box{color:#ff6b6b;font-size:12px;font-weight:600;background:rgba(255,50,50,.15);padding:8px 14px;border-radius:8px;border:1px solid rgba(255,50,50,.3);text-align:center;width:100%}
+.screen{width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.btn-wa{padding:12px 20px;background:linear-gradient(135deg,#1a5c2e,#0f3d1e);color:#4ade80;border:2px solid #2a8c4a;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.btn-copy{padding:12px 20px;background:linear-gradient(135deg,#2a1a4a,#1a0e30);color:#b39ddb;border:2px solid #6b45a0;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.join-input{width:100%;max-width:160px;padding:12px;font:800 24px -apple-system,sans-serif;text-align:center;letter-spacing:8px;background:rgba(0,0,0,.3);color:#c49a46;border:2px solid #8b7a46;border-radius:10px;outline:none;text-transform:uppercase}
+.room-code-display{background:rgba(0,0,0,.4);border:3px solid #c49a46;border-radius:16px;padding:24px 36px;text-align:center}
+.room-code-text{color:#c49a46;font-size:48px;font-weight:800;letter-spacing:12px}
+.share-row{display:flex;gap:8px;width:100%;max-width:320px}
+.info-box{background:rgba(0,0,0,.3);border:1px solid #8b7a46;border-radius:10px;padding:8px 14px;font-size:12px;text-align:center;width:100%}
+.rules-box{margin-top:10px;background:rgba(15,10,4,.9);border:1px solid #8b7a46;border-radius:12px;padding:12px 14px;max-width:380px;width:100%;font-size:12px;line-height:1.5}
+.score-bar{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:380px;margin-bottom:6px}
+.score-badge{padding:5px 10px;border-radius:8px;font:700 11px -apple-system,sans-serif;border:2px solid transparent;transition:all .3s}
+.score-badge.on{background:linear-gradient(135deg,#8b7a46,#5a4a20);color:#fff;border-color:#c49a46}
+.score-badge.off{background:rgba(40,25,8,.6);color:#d4b896}
+.timer-ring{position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.timer-ring svg{position:absolute;transform:rotate(-90deg)}
+.timer-num{font-weight:800;z-index:1}
+
+.playing-card{width:52px;height:76px;border-radius:8px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;cursor:pointer;transition:all .15s;border:2px solid #ddd;flex-shrink:0}
+.playing-card.red{color:#cc0000}.playing-card.black{color:#333}
+.playing-card.facedown{background:linear-gradient(145deg,#5a4a20,#2a1a08);color:transparent;border-color:#8b7a46}
+.playing-card.selectable{border-color:#ffd93d;box-shadow:0 0 8px rgba(255,217,61,.5)}
+.playing-card.selectable:active{transform:scale(.93)}
+.playing-card.matched{border-color:#4ade80;box-shadow:0 0 12px rgba(74,222,128,.5)}
+.playing-card .card-rank{font-size:16px;line-height:1}.playing-card .card-suit{font-size:18px;line-height:1}
+.hand-row{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin:6px 0}
+.pass-area{display:flex;gap:8px;align-items:center;justify-content:center;margin:8px 0}
+.result-box{background:rgba(0,0,0,.4);border:2px solid #ffd93d;border-radius:14px;padding:16px;text-align:center;width:100%;max-width:350px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes dotBlink{0%,20%{opacity:0}50%{opacity:1}100%{opacity:0}}
+@keyframes timerPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.anim-pulse{animation:pulse 1.5s ease infinite}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/j4f-sdk.js"></script>
+<script>
+/*
+  Donkey (Kழுதை) — Card passing game
+  - 4 players (1 human + 3 AI or 2 online + 2 AI)
+  - Using limited deck: 4 ranks × 4 suits = 16 cards
+  - Each player gets 4 cards
+  - Each round: everyone passes 1 card to the left simultaneously
+  - When someone gets 4 of a kind, they quietly put their hand down
+  - Last person to notice/put hand down = DONKEY
+  - Simplified: Auto-detect when someone gets 4-of-a-kind → round ends
+*/
+const GAME_ID="donkey";
+const TURN_TIME=8,FORFEIT_TIMEOUT=20;
+const SUITS=["♠","♥","♦","♣"];
+const SUIT_COLORS={"♠":"black","♥":"red","♦":"red","♣":"black"};
+// Use 4 ranks for 4 players (16 cards total)
+const RANKS=["A","K","Q","J"];
+
+function makeDeck(){const d=[];RANKS.forEach(r=>SUITS.forEach(s=>d.push({r,s})));return d}
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
+
+function initGame(){
+  const deck=shuffle(makeDeck());
+  const hands=[[],[],[],[]];
+  for(let i=0;i<16;i++)hands[i%4].push(deck[i]);
+  return{hands,phase:"pick",selectedCard:-1,passedCards:[null,null,null,null],
+    completed:[false,false,false,false],donkey:-1,round:0,
+    gameOver:false,winner:null,donkeyLetters:["","","",""],roundMsg:""};
+}
+
+const S={screen:"mode",gameMode:null,...initGame(),
+  timeLeft:TURN_TIME,timedOut:false,aiThink:false,
+  roomCode:"",joinCode:"",myPlayer:0,isOnline:false,opJoined:false,onlineErr:"",
+  leavePrompt:false,isLeaving:false,showRules:false,inviteMsg:"",searching:false,searchMsg:"",
+};
+let timerIv=null,autoTo=null,seenMoveId=0,cancelMatchmake=null;
+
+function resetState(){
+  stopTimer();
+  if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
+  const g=initGame();Object.assign(S,g,{timeLeft:TURN_TIME,timedOut:false,aiThink:false,
+    gameMode:null,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",
+    leavePrompt:false,isLeaving:false,showRules:false,inviteMsg:"",searching:false,searchMsg:""});
+  seenMoveId=0;
+}
+
+function has4ofKind(hand){
+  if(hand.length!==4)return false;
+  return hand.every(c=>c.r===hand[0].r);
+}
+
+function selectCard(idx){
+  if(S.phase!=="pick"||S.gameOver)return;
+  S.selectedCard=idx;render();
+}
+
+function confirmPass(){
+  if(S.selectedCard===-1||S.phase!=="pick")return;
+  stopTimer();
+
+  // Player passes selected card
+  S.passedCards[0]=S.hands[0][S.selectedCard];
+  S.hands[0].splice(S.selectedCard,1);
+
+  // AI players pick cards to pass (keep cards matching majority rank)
+  for(let p=1;p<4;p++){
+    const hand=S.hands[p];
+    const counts={};hand.forEach(c=>{counts[c.r]=(counts[c.r]||0)+1});
+    // Find the rank with fewest cards, pass one of those
+    let minRank=hand[0].r,minCount=5;
+    Object.entries(counts).forEach(([r,c])=>{if(c<minCount){minCount=c;minRank=r}});
+    const passIdx=hand.findIndex(c=>c.r===minRank);
+    S.passedCards[p]=hand[passIdx];
+    hand.splice(passIdx,1);
+  }
+
+  S.phase="passing";
+  render();
+
+  // After a brief animation delay, complete the pass
+  setTimeout(()=>{
+    // Each player receives from the player to their right (i-1)
+    for(let p=0;p<4;p++){
+      const from=(p+3)%4; // player to the right
+      S.hands[p].push(S.passedCards[from]);
+    }
+    S.passedCards=[null,null,null,null];
+    S.selectedCard=-1;
+    S.round++;
+
+    // Check if anyone has 4 of a kind
+    let completedPlayer=-1;
+    for(let p=0;p<4;p++){
+      if(has4ofKind(S.hands[p])){
+        S.completed[p]=true;
+        completedPlayer=p;
+      }
+    }
+
+    if(completedPlayer>=0){
+      // Someone got 4 of a kind! Others scramble
+      // The last person to not have 4-of-a-kind is the donkey
+      const notCompleted=[];
+      for(let p=0;p<4;p++){if(!S.completed[p])notCompleted.push(p)}
+
+      if(notCompleted.length>0){
+        S.donkey=notCompleted[notCompleted.length-1]; // Last one is donkey
+        // Add a letter to donkey
+        const word="DONKEY";
+        const current=S.donkeyLetters[S.donkey];
+        if(current.length<word.length){
+          S.donkeyLetters[S.donkey]=word.slice(0,current.length+1);
+        }
+        S.roundMsg=`${getPlayerName(completedPlayer)} got 4 ${S.hands[completedPlayer][0].r}s! ${getPlayerName(S.donkey)} is the Donkey! 🫏`;
+
+        // Check if anyone has spelled DONKEY
+        if(S.donkeyLetters[S.donkey]==="DONKEY"){
+          S.gameOver=true;S.winner=S.donkey===0?1:0; // If human is donkey, they lose
+          if(S.gameMode==="ai"){
+            J4F.leaderboard.submit(GAME_ID,S.donkey===0?"loss":"win").catch(()=>{});
+          }
+        }
+      }
+
+      S.phase="result";
+    }else{
+      S.phase="pick";
+      startTimer();
+    }
+
+    if(S.isOnline){
+      J4F.room.sendMoveAndState({action:"pass"},{hands:S.hands,completed:S.completed,donkey:S.donkey,round:S.round,phase:S.phase,gameOver:S.gameOver,winner:S.winner,donkeyLetters:S.donkeyLetters,roundMsg:S.roundMsg}).catch(()=>{});
+    }
+    render();
+  },800);
+}
+
+function getPlayerName(p){return p===0?"You":"AI "+p}
+
+function newSubRound(){
+  // Keep donkey letters, re-deal
+  const deck=shuffle(makeDeck());
+  S.hands=[[],[],[],[]];
+  for(let i=0;i<16;i++)S.hands[i%4].push(deck[i]);
+  S.phase="pick";S.selectedCard=-1;S.passedCards=[null,null,null,null];
+  S.completed=[false,false,false,false];S.donkey=-1;S.roundMsg="";
+  startTimer();render();
+}
+
+function autoMove(){
+  if(S.gameOver||S.phase!=="pick")return;
+  // Random card
+  S.selectedCard=Math.floor(Math.random()*S.hands[0].length);
+  confirmPass();
+}
+
+function startTimer(){
+  stopTimer();S.timeLeft=TURN_TIME;S.timedOut=false;
+  let t=TURN_TIME;
+  timerIv=setInterval(()=>{t--;S.timeLeft=t;if(t<=0){stopTimer();S.timedOut=true;autoTo=setTimeout(autoMove,400)}render()},1000);
+}
+function stopTimer(){if(timerIv){clearInterval(timerIv);timerIv=null}if(autoTo){clearTimeout(autoTo);autoTo=null}}
+
+/* ═══ ONLINE ═══ */
+async function createRoom(){S.onlineErr="";try{const g=initGame();Object.assign(S,g);const{code}=await J4F.room.create(GAME_ID,{hands:S.hands,phase:"pick",gameOver:false,donkeyLetters:["","","",""]});S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;S.gameMode="online";seenMoveId=0;S.screen="lobby";render();setupHostListener()}catch(e){S.onlineErr="Failed";render()}}
+async function joinRoom(codeOverride){S.onlineErr="";const code=(codeOverride||S.joinCode).toUpperCase().trim();if(code.length!==4){S.onlineErr="Enter 4-letter code";render();return}try{const{roomData}=await J4F.room.join(code);S.roomCode=code;S.myPlayer=1;S.isOnline=true;S.opJoined=true;const st=roomData.state||{};if(st.hands)S.hands=st.hands;S.phase=st.phase||"pick";seenMoveId=0;S.gameMode="online";S.screen="game";render();setupGuestListener();if(S.phase==="pick")startTimer()}catch(e){S.onlineErr=e.message;render()}}
+function searchOnline(){S.searching=true;S.onlineErr="";render();const g=initGame();Object.assign(S,g);cancelMatchmake=J4F.room.matchmake(GAME_ID,{hands:S.hands,phase:"pick",gameOver:false,donkeyLetters:["","","",""]},(code,player,roomData)=>{cancelMatchmake=null;S.searching=false;S.roomCode=code;S.myPlayer=player;S.isOnline=true;S.gameMode="online";seenMoveId=0;if(player===0){S.opJoined=false;S.screen="lobby";render();setupHostListener()}else{S.opJoined=true;const st=roomData?.state||{};if(st.hands)S.hands=st.hands;S.phase="pick";S.screen="game";render();setupGuestListener();startTimer()}},(msg)=>{cancelMatchmake=null;S.searching=false;S.onlineErr=msg;S.screen="online";render()})}
+function cancelSearch(){if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}S.searching=false;render()}
+function setupHostListener(){J4F.room.onUpdate(data=>{if(S.isLeaving)return;if(!S.opJoined&&data.guest&&data.status==="playing"){S.opJoined=true;S.screen="game";render();startTimer();return}if(data.moveId>seenMoveId&&data.state){seenMoveId=data.moveId;Object.assign(S,data.state);render()}})}
+function setupGuestListener(){J4F.room.onUpdate(data=>{if(S.isLeaving)return;if(data.moveId>seenMoveId&&data.state){seenMoveId=data.moveId;Object.assign(S,data.state);if(S.phase==="pick"&&!S.gameOver)startTimer();render()}})}
+async function leaveOnlineMatchToMode(){if(S.isLeaving)return;S.isLeaving=true;try{await J4F.room.leave()}catch(e){}resetState();S.screen="mode";S.isLeaving=false;render()}
+function shareWA(code){J4F.share.whatsapp("🫏 Join my Donkey game!\nPlay: "+window.location.origin+"/games/donkey/"+(code?"?room="+code:""))}
+async function shareCopy(code){const ok=await J4F.share.copy("Join my Donkey game!\n"+window.location.origin+"/games/donkey/"+(code?"?room="+code:""));S.inviteMsg=ok?"Copied!":"Failed";render();setTimeout(()=>{S.inviteMsg="";render()},2000)}
+
+/* ═══ RENDER ═══ */
+const app=document.getElementById("app");
+function render(){
+  if(S.screen==="mode")renderMode();
+  else if(S.screen==="online")renderOnline();
+  else if(S.screen==="searching")renderSearching();
+  else if(S.screen==="lobby")renderLobby();
+  else if(S.screen==="game")renderGame();
+}
+
+function renderMode(){
+  let h=`<div class="screen" style="padding-top:20px">
+    <div class="title">🫏 கழுதை</div><div class="subtitle">DONKEY</div>
+    <a href="/" style="color:#c49a46;font-size:11px;text-decoration:none;margin-bottom:4px">← J4F Home</a>
+    <p style="font-size:13px;text-align:center">Pass cards fast! Collect 4 of a kind.<br>Don't be the last one — or you're the Donkey!</p>
+    <div class="card-ui" onclick="resetState();S.gameMode='pvp';S.screen='game';Object.assign(S,initGame());render();startTimer()">
+      <div style="font-size:32px">👥</div><div style="flex:1"><div style="color:#c49a46;font-weight:700;font-size:15px">Local Play</div><div style="color:#8a7a56;font-size:11px">You + 3 AI players · ⏱️ ${TURN_TIME}s turns</div></div>
+    </div>
+    <div class="card-ui" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.onlineErr='';S.joinCode='';S.screen='online';render()">
+      <div style="font-size:32px">🌐</div><div style="flex:1"><div style="color:#5bc0de;font-weight:700;font-size:15px">Online Multiplayer</div></div>
+    </div>
+    <div class="card-ui" onclick="resetState();S.gameMode='ai';Object.assign(S,initGame());S.screen='game';render();startTimer()">
+      <div style="font-size:32px">🤖</div><div style="flex:1"><div style="color:#4CAF50;font-weight:700;font-size:15px">Play vs AI</div><div style="color:#8a7a56;font-size:11px">Don't be the Donkey!</div></div>
+    </div>
+  </div>`;app.innerHTML=h;
+}
+function renderOnline(){
+  let h=`<div class="screen" style="padding-top:20px;justify-content:center">
+    <div class="title" style="font-size:24px">🫏 Donkey</div>
+    <button class="card-ui" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.screen='searching';searchOnline()"><div style="font-size:28px">🔍</div><div style="flex:1"><div style="color:#5bc0de;font-weight:700">Search Online</div></div></button>
+    <button class="card-ui" style="background:linear-gradient(145deg,#1a4a2a,#0f3018);border-color:#2a8c4a" onclick="createRoom()"><div style="font-size:28px">👫</div><div style="flex:1"><div style="color:#4ade80;font-weight:700">Send to Friends</div></div></button>
+    <div style="color:#8b7a46;font-size:11px;letter-spacing:2px;margin:4px">── HAVE A CODE? ──</div>
+    <div style="width:100%;background:rgba(0,0,0,.3);border:2px solid #8b7a46;border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px;justify-content:center">
+      <input class="join-input" type="text" maxlength="4" placeholder="ABCD" style="max-width:120px;padding:8px;font-size:20px" value="${S.joinCode}" oninput="S.joinCode=this.value.toUpperCase()">
+      <button class="btn-primary" onclick="joinRoom()">Join</button>
+    </div>
+    ${S.onlineErr?`<div class="error-box">⚠️ ${S.onlineErr}</div>`:""}
+    <button class="btn" onclick="S.screen='mode';render()">← Back</button>
+  </div>`;app.innerHTML=h;
+}
+function renderSearching(){app.innerHTML=`<div class="screen" style="padding-top:40px;align-items:center"><div class="title" style="font-size:24px">🫏 Donkey</div><div style="font-size:48px;margin:20px">🔍</div><p style="color:#5bc0de;font-weight:700">Searching...</p><div class="anim-pulse" style="color:#7ab8d4">Looking for players...</div><button class="btn" style="margin-top:20px" onclick="cancelSearch();S.screen='online';render()">Cancel</button></div>`}
+function renderLobby(){app.innerHTML=`<div class="screen" style="padding-top:20px;align-items:center"><div class="title" style="font-size:24px">🫏 Donkey</div><div class="room-code-display"><div style="color:#8a7a56;font-size:11px;margin-bottom:6px">ROOM CODE</div><div class="room-code-text">${S.roomCode}</div></div><div class="anim-pulse" style="color:#5bc0de;font-size:14px">Waiting for opponent...</div><div class="share-row" style="margin-top:12px"><button class="btn-wa" style="flex:1;padding:10px;font-size:12px" onclick="shareWA('${S.roomCode}')">💬 WhatsApp</button><button class="btn-copy" style="flex:1;padding:10px;font-size:12px" onclick="shareCopy('${S.roomCode}')">📋 Copy${S.inviteMsg?" ✓":""}</button></div><button class="btn" style="margin-top:12px" onclick="leaveOnlineMatchToMode()">Cancel</button></div>`}
+
+function renderGame(){
+  const showTimer=S.phase==="pick"&&!S.gameOver;
+
+  let timerHTML="";
+  if(showTimer){
+    const r=18,circ=2*Math.PI*r,off=circ*(1-S.timeLeft/TURN_TIME);
+    const col=S.timeLeft<=3?"#ff4444":S.timeLeft<=5?"#ff8c00":"#c49a46";
+    timerHTML=`<div class="timer-ring"><svg width="44" height="44"><circle cx="22" cy="22" r="${r}" fill="none" stroke="rgba(80,60,20,.3)" stroke-width="3.5"/><circle cx="22" cy="22" r="${r}" fill="none" stroke="${col}" stroke-width="3.5" stroke-dasharray="${circ}" stroke-dashoffset="${off}" stroke-linecap="round" style="transition:stroke-dashoffset .3s"/></svg><span class="timer-num" style="font-size:16px;color:${col}">${S.timeLeft}</span></div>`;
+  }else if(S.gameOver){timerHTML=`<div style="font-size:22px">🏆</div>`}
+
+  let statusText="";
+  if(S.phase==="pick")statusText="Select a card to pass to the left ←";
+  else if(S.phase==="passing")statusText="Passing cards... 🔄";
+  else if(S.phase==="result")statusText=S.roundMsg;
+  if(S.gameOver)statusText=S.donkeyLetters.some((l,i)=>l==="DONKEY")?`${getPlayerName(S.donkeyLetters.indexOf("DONKEY"))} spelled D-O-N-K-E-Y! Game Over!`:"Game Over!";
+
+  // Donkey letters display
+  let lettersHTML=`<div style="display:flex;gap:12px;justify-content:center;margin:6px 0">`;
+  for(let p=0;p<4;p++){
+    const name=getPlayerName(p);
+    const letters=S.donkeyLetters[p]||"";
+    const isDonkey=letters==="DONKEY";
+    lettersHTML+=`<div style="text-align:center;padding:6px 8px;border-radius:8px;background:${isDonkey?"rgba(255,68,68,.2)":"rgba(0,0,0,.2)"}">
+      <div style="font-size:10px;color:#8a7a56">${name}</div>
+      <div style="font-size:12px;font-weight:700;color:${isDonkey?"#ff4444":"#c49a46"};letter-spacing:2px">${letters||"—"}</div>
+    </div>`;
+  }
+  lettersHTML+=`</div>`;
+
+  // AI hands (face down counts)
+  let aiHTML=`<div style="display:flex;gap:16px;justify-content:center;margin:6px 0">`;
+  for(let p=1;p<4;p++){
+    aiHTML+=`<div style="text-align:center"><div style="font-size:10px;color:#8a7a56">AI ${p}</div><div style="display:flex;gap:2px;justify-content:center">`;
+    for(let i=0;i<S.hands[p].length;i++){
+      aiHTML+=`<div class="playing-card facedown" style="width:28px;height:40px"><span style="font-size:10px;color:#8b7a46">🂠</span></div>`;
+    }
+    aiHTML+=`</div></div>`;
+  }
+  aiHTML+=`</div>`;
+
+  // My hand
+  let handHTML=`<div style="text-align:center;font-size:11px;color:#8a7a56;margin:4px">Your Hand — Pick one to pass left</div><div class="hand-row">`;
+  S.hands[0].forEach((c,i)=>{
+    const color=SUIT_COLORS[c.s];
+    const canSelect=S.phase==="pick"&&!S.gameOver;
+    const isSel=S.selectedCard===i;
+    const isMatched=S.hands[0].filter(x=>x.r===c.r).length>=3;
+    handHTML+=`<div class="playing-card ${color}${canSelect?" selectable":""}${isMatched?" matched":""}" style="${isSel?"transform:translateY(-10px);border-color:#ffd93d;box-shadow:0 0 14px rgba(255,217,61,.6)":""}" ${canSelect?`onclick="selectCard(${i})"`:""}>
+      <span class="card-rank">${c.r}</span><span class="card-suit">${c.s}</span></div>`;
+  });
+  handHTML+=`</div>`;
+
+  let h=`
+  <div style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:380px;margin-bottom:4px">
+    <div><div class="title" style="font-size:20px">🫏 Donkey</div><div style="color:#8a7a56;font-size:9px">Round ${S.round+1}</div></div>
+    ${timerHTML}
+  </div>
+  ${lettersHTML}
+  <div class="info-box">${statusText}</div>
+  ${aiHTML}
+  ${S.phase==="passing"?`<div class="pass-area"><div style="font-size:28px">🔄</div><div style="color:#c49a46;font-weight:700">Passing cards...</div></div>`:""}
+  ${handHTML}
+  ${S.phase==="pick"&&S.selectedCard>=0?`<button class="btn-primary" style="margin-top:8px" onclick="confirmPass()">Pass Card ←</button>`:""}
+  <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center">
+    ${S.phase==="result"&&!S.gameOver?`<button class="btn-primary" onclick="newSubRound()">Next Round →</button>`:""}
+    ${S.gameOver?`<button class="btn-primary" onclick="resetState();S.gameMode='ai';Object.assign(S,initGame());S.screen='game';render();startTimer()">New Game</button>`:""}
+    <button class="btn" onclick="S.showRules=!S.showRules;render()">${S.showRules?"Hide":"Rules"}</button>
+    <button class="btn" onclick="resetState();S.screen='mode';render()">Mode</button>
+  </div>
+  ${S.showRules?`<div class="rules-box">
+    <p style="font-weight:700;color:#c49a46;margin-bottom:6px">How to Play Donkey</p>
+    <p style="margin-bottom:5px">4 players, 4 cards each. Collect 4 of the same rank!</p>
+    <p style="margin-bottom:5px">Each round, pick 1 card to pass to the player on your left.</p>
+    <p style="margin-bottom:5px">Everyone passes simultaneously. Try to collect 4 of a kind!</p>
+    <p style="margin-bottom:5px">When someone gets 4 of a kind, the last player left is the DONKEY 🫏</p>
+    <p>Spell D-O-N-K-E-Y and you're out!</p>
+  </div>`:""}`;
+  app.innerHTML=h;
+}
+
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  const roomCode=params.get("room");
+  if(roomCode&&roomCode.length===4){S.joinCode=roomCode.toUpperCase();S.screen="online";render();setTimeout(()=>joinRoom(roomCode),500);window.history.replaceState({},"",window.location.pathname);return}
+  render();
+})();
+</script>
+</body>
+</html>

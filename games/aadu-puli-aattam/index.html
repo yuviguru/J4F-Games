@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#1a4a3a">
+<title>Aadu Puli Aattam — J4F</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(180deg,#1a4a3a,#0d2a1e);color:#a8d5c0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#app{height:100dvh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;align-items:center;padding:12px 10px 100px}
+.title{color:#4ade80;font-size:26px;font-weight:700;letter-spacing:2px;text-shadow:0 2px 8px rgba(74,222,128,.3)}
+.subtitle{color:#6b9b85;font-size:12px;letter-spacing:2px}
+.btn{padding:8px 14px;background:rgba(20,60,40,.6);color:#a8d5c0;border:1px solid #2a8c5a;border-radius:10px;font:600 11px -apple-system,sans-serif;cursor:pointer}
+.btn-primary{padding:9px 18px;background:linear-gradient(135deg,#2a8c5a,#1a6a3a);color:#fff;border:none;border-radius:10px;font:700 13px -apple-system,sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(42,140,90,.4)}
+.card{background:linear-gradient(145deg,#1a4a3a,#0f3528);border:2px solid #2a8c5a;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;width:100%}
+.error-box{color:#ff6b6b;font-size:12px;font-weight:600;background:rgba(255,50,50,.15);padding:8px 14px;border-radius:8px;border:1px solid rgba(255,50,50,.3);text-align:center;width:100%}
+.hidden{display:none!important}
+.screen{width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.btn-wa{padding:12px 20px;background:linear-gradient(135deg,#1a5c2e,#0f3d1e);color:#4ade80;border:2px solid #2a8c4a;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.btn-copy{padding:12px 20px;background:linear-gradient(135deg,#2a1a4a,#1a0e30);color:#b39ddb;border:2px solid #6b45a0;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.join-input{width:100%;max-width:160px;padding:12px;font:800 24px -apple-system,sans-serif;text-align:center;letter-spacing:8px;background:rgba(0,0,0,.3);color:#4ade80;border:2px solid #2a8c5a;border-radius:10px;outline:none;text-transform:uppercase}
+.room-code-display{background:rgba(0,0,0,.4);border:3px solid #4ade80;border-radius:16px;padding:24px 36px;text-align:center}
+.room-code-text{color:#4ade80;font-size:48px;font-weight:800;letter-spacing:12px;text-shadow:0 2px 12px rgba(74,222,128,.4)}
+.share-row{display:flex;gap:8px;width:100%;max-width:320px}
+
+/* Board */
+.board-container{position:relative;width:320px;height:340px;margin:8px auto}
+.board-canvas{width:100%;height:100%}
+.node{position:absolute;width:36px;height:36px;border-radius:50%;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;transition:all .15s;z-index:2;border:2px solid transparent}
+.node.selectable{border-color:#ffd93d;box-shadow:0 0 12px rgba(255,217,61,.4);cursor:pointer}
+.node.selected{border-color:#fff;box-shadow:0 0 16px rgba(255,255,255,.5);transform:translate(-50%,-50%) scale(1.15)}
+.node.movable{border-color:#4ade80;box-shadow:0 0 10px rgba(74,222,128,.4)}
+.node.empty{background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.15)}
+.node.tiger{background:linear-gradient(135deg,#ff8c00,#cc6600);border-color:#ff8c00}
+.node.goat{background:linear-gradient(135deg,#e0e0e0,#a0a0a0);border-color:#ccc}
+
+/* Status */
+.status-bar{display:flex;align-items:center;justify-content:center;gap:6px;min-height:22px;margin-bottom:4px}
+.score-bar{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:380px;margin-bottom:6px}
+.score-badge{padding:5px 10px;border-radius:8px;font:700 12px -apple-system,sans-serif;border:2px solid transparent;transition:all .3s}
+.score-badge.on{background:linear-gradient(135deg,#2a8c5a,#1a6a3a);color:#fff;border-color:#4ade80;box-shadow:0 0 10px rgba(74,222,128,.3)}
+.score-badge.off{background:rgba(20,60,40,.6);color:#a8d5c0}
+.turn-text{font-size:12px;text-align:center}
+.info-box{background:rgba(0,0,0,.3);border:1px solid #2a8c5a;border-radius:10px;padding:8px 14px;font-size:12px;text-align:center;width:100%}
+.timer-ring{position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.timer-ring svg{position:absolute;transform:rotate(-90deg)}
+.timer-num{font-weight:800;z-index:1}
+.rules-box{margin-top:10px;background:rgba(10,30,20,.9);border:1px solid #2a8c5a;border-radius:12px;padding:12px 14px;max-width:380px;width:100%;font-size:12px;line-height:1.5}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes dotBlink{0%,20%{opacity:0}50%{opacity:1}100%{opacity:0}}
+@keyframes timerPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.anim-fadeUp{animation:fadeUp .4s ease both}
+.anim-pulse{animation:pulse 1.5s ease infinite}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/j4f-sdk.js"></script>
+<script>
+/* ═══ Aadu Puli Aattam (Goat vs Tiger) ═══ */
+const GAME_ID="aadu-puli-aattam";
+const TURN_TIME=15,FORFEIT_TIMEOUT=20;
+
+/* Board: 23 nodes on a triangle grid with diagonals
+   Layout (5 rows):
+   Row0:         0
+   Row1:       1   2
+   Row2:     3   4   5
+   Row3:   6   7   8   9
+   Row4: 10  11  12  13  14
+   Plus inner connections forming triangles
+*/
+const NODE_POS=[
+  [160,20],[110,80],[210,80],
+  [60,140],[160,140],[260,140],
+  [10,200],[110,200],[210,200],[310,200],
+  [10,270],[85,270],[160,270],[235,270],[310,270]
+];
+
+const EDGES=[
+  [0,1],[0,2],[1,2],[1,3],[1,4],[2,4],[2,5],
+  [3,4],[4,5],[3,6],[3,7],[4,7],[4,8],[5,8],[5,9],
+  [6,7],[7,8],[8,9],[6,10],[6,11],[7,11],[7,12],[8,12],[8,13],[9,13],[9,14],
+  [10,11],[11,12],[12,13],[13,14],
+  [0,4],[1,7],[2,8],[3,11],[4,12],[5,13],
+  [1,3],[2,5],[4,6],[4,9],[7,10],[8,14],
+  [7,3],[8,5],[11,6],[13,9]
+];
+
+function getAdj(){
+  const adj=Array.from({length:15},()=>[]);
+  EDGES.forEach(([a,b])=>{if(!adj[a].includes(b))adj[a].push(b);if(!adj[b].includes(a))adj[b].push(a)});
+  return adj;
+}
+const ADJ=getAdj();
+
+function canJump(from,to,board){
+  // Tiger can jump over a goat if there's a goat in between on a straight line
+  // Check if there's a node between from and to that has a goat
+  const mid=findMid(from,to);
+  if(mid===-1)return false;
+  return board[mid]==="G";
+}
+
+function findMid(a,b){
+  // Find if there's a node exactly between a and b on the grid
+  const ax=NODE_POS[a][0],ay=NODE_POS[a][1];
+  const bx=NODE_POS[b][0],by=NODE_POS[b][1];
+  const mx=(ax+bx)/2,my=(ay+by)/2;
+  for(let i=0;i<15;i++){
+    if(i===a||i===b)continue;
+    if(Math.abs(NODE_POS[i][0]-mx)<5&&Math.abs(NODE_POS[i][1]-my)<5)return i;
+  }
+  return -1;
+}
+
+function getJumpTargets(from,board){
+  const targets=[];
+  for(let to=0;to<15;to++){
+    if(board[to]!==null)continue;
+    if(canJump(from,to,board)){
+      targets.push(to);
+    }
+  }
+  return targets;
+}
+
+function getTigerMoves(pos,board){
+  const moves=[];
+  // Normal adjacent moves
+  ADJ[pos].forEach(n=>{if(board[n]===null)moves.push({to:n,type:"move"})});
+  // Jump captures
+  getJumpTargets(pos,board).forEach(n=>moves.push({to:n,type:"jump"}));
+  return moves;
+}
+
+function getGoatPlacements(board){
+  const places=[];
+  for(let i=0;i<15;i++)if(board[i]===null)places.push(i);
+  return places;
+}
+
+function getGoatMoves(pos,board){
+  const moves=[];
+  ADJ[pos].forEach(n=>{if(board[n]===null)moves.push({to:n,type:"move"})});
+  return moves;
+}
+
+/* ═══ STATE ═══ */
+const S={
+  screen:"mode",gameMode:null,aiDiff:"medium",
+  board:Array(15).fill(null), // null=empty, "T"=tiger, "G"=goat
+  goatsPlaced:0, goatsCaptured:0, maxGoats:15,
+  cp:0, // 0=tiger, 1=goat
+  selectedNode:-1,
+  gameOver:false, winner:null, // 0=tiger wins, 1=goat wins
+  anim:false, timeLeft:TURN_TIME, timedOut:false,
+  aiThink:false,
+  // online
+  roomCode:"",joinCode:"",myPlayer:0,isOnline:false,opJoined:false,onlineErr:"",
+  leavePrompt:false,waitingReconnect:false,reconnectLeft:FORFEIT_TIMEOUT,reconnectWinner:null,isLeaving:false,
+  showRules:false,inviteMsg:"",searching:false,searchMsg:"",
+};
+let timerIv=null,autoTo=null,seenMoveId=0,cancelMatchmake=null,reconnectIv=null;
+
+function initBoard(){
+  const b=Array(15).fill(null);
+  // Place 3 tigers at corners
+  b[0]="T";b[10]="T";b[14]="T";
+  return b;
+}
+
+function resetState(){
+  stopTimer();stopReconnectTimer();
+  if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
+  Object.assign(S,{board:initBoard(),goatsPlaced:0,goatsCaptured:0,cp:0,selectedNode:-1,
+    gameOver:false,winner:null,anim:false,timeLeft:TURN_TIME,timedOut:false,aiThink:false,
+    gameMode:null,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",
+    leavePrompt:false,waitingReconnect:false,reconnectLeft:FORFEIT_TIMEOUT,reconnectWinner:null,isLeaving:false,
+    showRules:false,inviteMsg:"",searching:false,searchMsg:""});
+  seenMoveId=0;
+}
+
+/* ═══ TIMER ═══ */
+function startTimer(){
+  stopTimer();S.timeLeft=TURN_TIME;S.timedOut=false;
+  let t=TURN_TIME;
+  timerIv=setInterval(()=>{
+    t--;S.timeLeft=t;
+    if(t<=0){stopTimer();S.timedOut=true;autoTo=setTimeout(autoMove,600)}
+    render();
+  },1000);
+}
+function stopTimer(){if(timerIv){clearInterval(timerIv);timerIv=null}if(autoTo){clearTimeout(autoTo);autoTo=null}}
+function stopReconnectTimer(){if(reconnectIv){clearInterval(reconnectIv);reconnectIv=null}}
+function clearReconnectWait(){stopReconnectTimer();S.waitingReconnect=false;S.reconnectLeft=FORFEIT_TIMEOUT;S.reconnectWinner=null}
+function startReconnectTimer(winner){
+  if(S.gameOver||S.waitingReconnect)return;
+  S.waitingReconnect=true;S.reconnectWinner=winner;S.reconnectLeft=FORFEIT_TIMEOUT;
+  stopTimer();stopReconnectTimer();
+  reconnectIv=setInterval(()=>{
+    S.reconnectLeft--;
+    if(S.reconnectLeft<=0){
+      stopReconnectTimer();S.waitingReconnect=false;S.gameOver=true;S.winner=winner;
+      J4F.room.finish(winner).catch(()=>{});
+    }
+    render();
+  },1000);
+}
+function autoMove(){
+  if(S.anim||S.gameOver||S.waitingReconnect)return;
+  // Random valid move
+  if(S.cp===0){// Tiger
+    const tigers=[];
+    S.board.forEach((v,i)=>{if(v==="T")tigers.push(i)});
+    for(const t of tigers){
+      const moves=getTigerMoves(t,S.board);
+      if(moves.length>0){doMove({from:t,to:moves[0].to,type:moves[0].type});return}
+    }
+  }else{// Goat
+    if(S.goatsPlaced<S.maxGoats){
+      const places=getGoatPlacements(S.board);
+      if(places.length>0){doMove({from:-1,to:places[0],type:"place"});return}
+    }else{
+      const goats=[];S.board.forEach((v,i)=>{if(v==="G")goats.push(i)});
+      for(const g of goats){
+        const moves=getGoatMoves(g,S.board);
+        if(moves.length>0){doMove({from:g,to:moves[0].to,type:"move"});return}
+      }
+    }
+  }
+}
+
+/* ═══ GAME LOGIC ═══ */
+function doMove(move){
+  if(S.anim||S.waitingReconnect)return;
+  clearReconnectWait();
+  const mover=S.cp;
+
+  if(move.type==="place"){
+    S.board[move.to]="G";
+    S.goatsPlaced++;
+  }else if(move.type==="move"){
+    S.board[move.to]=S.board[move.from];
+    S.board[move.from]=null;
+  }else if(move.type==="jump"){
+    const mid=findMid(move.from,move.to);
+    S.board[move.to]="T";
+    S.board[move.from]=null;
+    S.board[mid]=null;
+    S.goatsCaptured++;
+  }
+  S.selectedNode=-1;
+
+  // Check win conditions
+  if(S.goatsCaptured>=5){
+    S.gameOver=true;S.winner=0;stopTimer();
+  }else{
+    // Check if tigers are blocked
+    let tigerCanMove=false;
+    S.board.forEach((v,i)=>{
+      if(v==="T"){
+        if(getTigerMoves(i,S.board).length>0)tigerCanMove=true;
+      }
+    });
+    if(!tigerCanMove){S.gameOver=true;S.winner=1;stopTimer()}
+  }
+
+  if(!S.gameOver){
+    S.cp=1-mover;
+    // Check if next player has moves
+    if(S.cp===1&&S.goatsPlaced>=S.maxGoats){
+      let goatCanMove=false;
+      S.board.forEach((v,i)=>{
+        if(v==="G"&&getGoatMoves(i,S.board).length>0)goatCanMove=true;
+      });
+      if(!goatCanMove){S.gameOver=true;S.winner=0;stopTimer()}
+    }
+  }
+
+  // Leaderboard
+  if(S.gameOver){
+    if(S.isOnline){
+      const r=S.winner===S.myPlayer?"win":"loss";
+      J4F.leaderboard.submit(GAME_ID,r).catch(()=>{});
+      J4F.room.finish(S.winner).catch(()=>{});
+    }else if(S.gameMode==="ai"){
+      const r=S.winner===0?"win":"loss";
+      J4F.leaderboard.submit(GAME_ID,r).catch(()=>{});
+    }
+  }
+
+  // Send online
+  if(S.isOnline&&mover===S.myPlayer){
+    J4F.room.sendMoveAndState(move,{board:S.board,goatsPlaced:S.goatsPlaced,goatsCaptured:S.goatsCaptured,cp:S.cp,gameOver:S.gameOver,winner:S.winner}).catch(()=>{});
+  }
+
+  render();
+
+  if(!S.gameOver){
+    if(S.gameMode==="ai"&&S.cp===1){scheduleAI()}
+    else if(S.isOnline&&S.cp!==S.myPlayer){}
+    else{startTimer()}
+  }
+}
+
+function scheduleAI(){
+  S.aiThink=true;render();
+  setTimeout(()=>{
+    S.aiThink=false;
+    const move=aiPickMove();
+    if(move)doMove(move);
+  },600+Math.random()*400);
+}
+
+function aiPickMove(){
+  // AI plays goats (player 1)
+  if(S.goatsPlaced<S.maxGoats){
+    const places=getGoatPlacements(S.board);
+    if(places.length===0)return null;
+    if(S.aiDiff==="easy")return{from:-1,to:places[Math.floor(Math.random()*places.length)],type:"place"};
+    // Try to block tigers
+    let best=places[0],bestScore=-Infinity;
+    for(const p of places){
+      const testBoard=S.board.slice();testBoard[p]="G";
+      let score=0;
+      testBoard.forEach((v,i)=>{if(v==="T"){score-=getTigerMoves(i,testBoard).length*2}});
+      // Prefer center
+      if(p===4||p===7||p===8||p===12)score+=3;
+      if(S.aiDiff==="medium"&&Math.random()<.3)score+=Math.random()*10;
+      if(score>bestScore){bestScore=score;best=p}
+    }
+    return{from:-1,to:best,type:"place"};
+  }else{
+    const goats=[];S.board.forEach((v,i)=>{if(v==="G")goats.push(i)});
+    let allMoves=[];
+    goats.forEach(g=>{getGoatMoves(g,S.board).forEach(m=>allMoves.push({from:g,to:m.to,type:"move"}))});
+    if(allMoves.length===0)return null;
+    if(S.aiDiff==="easy")return allMoves[Math.floor(Math.random()*allMoves.length)];
+    let best=allMoves[0],bestScore=-Infinity;
+    for(const m of allMoves){
+      const testBoard=S.board.slice();testBoard[m.to]=testBoard[m.from];testBoard[m.from]=null;
+      let score=0;
+      testBoard.forEach((v,i)=>{if(v==="T"){score-=getTigerMoves(i,testBoard).length*3}});
+      if(S.aiDiff==="medium"&&Math.random()<.3)score+=Math.random()*8;
+      if(score>bestScore){bestScore=score;best=m}
+    }
+    return best;
+  }
+}
+
+function handleNodeClick(idx){
+  if(S.anim||S.gameOver||S.waitingReconnect)return;
+  if(S.gameMode==="ai"&&S.cp===1)return;
+  if(S.isOnline&&S.cp!==S.myPlayer)return;
+
+  if(S.cp===0){// Tiger's turn
+    if(S.selectedNode===-1){
+      if(S.board[idx]==="T"){S.selectedNode=idx;render()}
+    }else{
+      if(idx===S.selectedNode){S.selectedNode=-1;render();return}
+      if(S.board[idx]==="T"){S.selectedNode=idx;render();return}
+      const moves=getTigerMoves(S.selectedNode,S.board);
+      const move=moves.find(m=>m.to===idx);
+      if(move){doMove({from:S.selectedNode,to:idx,type:move.type})}
+      else{S.selectedNode=-1;render()}
+    }
+  }else{// Goat's turn
+    if(S.goatsPlaced<S.maxGoats){
+      if(S.board[idx]===null){doMove({from:-1,to:idx,type:"place"})}
+    }else{
+      if(S.selectedNode===-1){
+        if(S.board[idx]==="G"){S.selectedNode=idx;render()}
+      }else{
+        if(idx===S.selectedNode){S.selectedNode=-1;render();return}
+        if(S.board[idx]==="G"){S.selectedNode=idx;render();return}
+        const moves=getGoatMoves(S.selectedNode,S.board);
+        const move=moves.find(m=>m.to===idx);
+        if(move){doMove({from:S.selectedNode,to:idx,type:"move"})}
+        else{S.selectedNode=-1;render()}
+      }
+    }
+  }
+}
+
+/* ═══ ONLINE ═══ */
+async function createRoom(){
+  S.onlineErr="";
+  try{
+    const{code}=await J4F.room.create(GAME_ID,{board:initBoard(),goatsPlaced:0,goatsCaptured:0,cp:0,gameOver:false,winner:null});
+    S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;S.gameMode="online";
+    S.board=initBoard();S.goatsPlaced=0;S.goatsCaptured=0;S.cp=0;S.gameOver=false;S.winner=null;seenMoveId=0;
+    S.screen="lobby";render();setupHostListener();
+  }catch(e){S.onlineErr="Failed: "+(e.message||e);render()}
+}
+async function joinRoom(codeOverride){
+  S.onlineErr="";const code=(codeOverride||S.joinCode).toUpperCase().trim();
+  if(code.length!==4){S.onlineErr="Enter a 4-letter code";render();return}
+  try{
+    const{roomData}=await J4F.room.join(code);
+    S.roomCode=code;S.myPlayer=1;S.isOnline=true;S.opJoined=true;
+    const st=roomData.state||{};
+    S.board=st.board||initBoard();S.goatsPlaced=st.goatsPlaced||0;S.goatsCaptured=st.goatsCaptured||0;S.cp=st.cp||0;
+    S.gameOver=false;S.winner=null;seenMoveId=0;
+    S.gameMode="online";S.screen="game";render();setupGuestListener();
+    if(S.cp===S.myPlayer)startTimer();
+  }catch(e){S.onlineErr=e.message||"Failed to join";render()}
+}
+function searchOnline(){
+  S.searching=true;S.searchMsg="Looking for players...";S.onlineErr="";render();
+  cancelMatchmake=J4F.room.matchmake(GAME_ID,
+    {board:initBoard(),goatsPlaced:0,goatsCaptured:0,cp:0,gameOver:false,winner:null},
+    (code,player,roomData)=>{
+      cancelMatchmake=null;S.searching=false;
+      S.roomCode=code;S.myPlayer=player;S.isOnline=true;S.gameMode="online";
+      S.board=initBoard();S.goatsPlaced=0;S.goatsCaptured=0;S.cp=0;S.gameOver=false;S.winner=null;seenMoveId=0;
+      if(player===0){S.opJoined=false;S.screen="lobby";render();setupHostListener()}
+      else{const st=roomData?.state||{};S.board=st.board||initBoard();S.goatsPlaced=st.goatsPlaced||0;S.goatsCaptured=st.goatsCaptured||0;S.cp=st.cp||0;S.opJoined=true;S.screen="game";render();setupGuestListener();if(S.cp===S.myPlayer)startTimer()}
+    },
+    (msg)=>{cancelMatchmake=null;S.searching=false;S.searchMsg="";S.onlineErr=msg;S.screen="online";render()}
+  );
+}
+function cancelSearch(){if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}S.searching=false;S.searchMsg="";render()}
+
+function handlePresenceUpdate(data){
+  if(!S.isOnline||S.gameOver||!S.opJoined||S.screen!=="game")return;
+  const me=S.myPlayer===0?"host":"guest",opp=S.myPlayer===0?"guest":"host";
+  if(!data?.presence?.[me]?.online)return;
+  if(!data?.presence?.[opp]?.online)startReconnectTimer(S.myPlayer);
+  else if(S.waitingReconnect)clearReconnectWait();
+}
+function setupHostListener(){
+  J4F.room.onUpdate(data=>{
+    if(S.isLeaving)return;
+    if(!S.opJoined&&data.guest&&data.status==="playing"){S.opJoined=true;S.screen="game";render();startTimer();return}
+    if(data.status==="finished"&&typeof data.winner==="number"&&!S.gameOver){clearReconnectWait();S.gameOver=true;S.winner=data.winner;stopTimer();render();return}
+    handlePresenceUpdate(data);
+    if(data.moveId>seenMoveId&&!S.anim&&data.lastMove){
+      const mv=data.lastMove;
+      if(mv.from!==undefined&&(S.cp!==S.myPlayer||mv.type)){seenMoveId=data.moveId;if(data.state){S.board=data.state.board||S.board;S.goatsPlaced=data.state.goatsPlaced||0;S.goatsCaptured=data.state.goatsCaptured||0;S.cp=data.state.cp;S.gameOver=data.state.gameOver||false;S.winner=data.state.winner;if(S.gameOver)stopTimer();else if(S.cp===S.myPlayer)startTimer();render()}}
+    }
+  });
+}
+function setupGuestListener(){
+  J4F.room.onUpdate(data=>{
+    if(S.isLeaving)return;
+    if(data.status==="finished"&&typeof data.winner==="number"&&!S.gameOver){clearReconnectWait();S.gameOver=true;S.winner=data.winner;stopTimer();render();return}
+    handlePresenceUpdate(data);
+    if(data.moveId>seenMoveId&&!S.anim&&data.lastMove){
+      seenMoveId=data.moveId;
+      if(data.state){S.board=data.state.board||S.board;S.goatsPlaced=data.state.goatsPlaced||0;S.goatsCaptured=data.state.goatsCaptured||0;S.cp=data.state.cp;S.gameOver=data.state.gameOver||false;S.winner=data.state.winner;if(S.gameOver)stopTimer();else if(S.cp===S.myPlayer)startTimer();render()}
+    }
+  });
+}
+async function leaveOnlineMatchToMode(){
+  if(S.isLeaving)return;stopTimer();stopReconnectTimer();
+  S.isLeaving=true;S.gameMode=null;S.showRules=false;
+  try{await J4F.room.leave()}catch(e){}
+  resetState();S.screen="mode";S.leavePrompt=false;S.isLeaving=false;render();
+}
+
+function shareWA(code){
+  const base=window.location.origin+"/games/aadu-puli-aattam/";
+  const url=code?base+"?room="+code:base;
+  const text=code?"🐅 Join my Aadu Puli Aattam game on J4F!\n\nTap to play: "+url:"🐅 Let's play Aadu Puli Aattam on J4F!\n\nPlay here: "+url;
+  J4F.share.whatsapp(text);
+}
+async function shareCopy(code){
+  const base=window.location.origin+"/games/aadu-puli-aattam/";
+  const url=code?base+"?room="+code:base;
+  const text=code?"Join my Aadu Puli Aattam game!\nTap to play: "+url:"Let's play Aadu Puli Aattam!\nPlay here: "+url;
+  const ok=await J4F.share.copy(text);
+  S.inviteMsg=ok?"Copied!":"Couldn't copy";render();setTimeout(()=>{S.inviteMsg="";render()},2000);
+}
+
+/* ═══ RENDER ═══ */
+const app=document.getElementById("app");
+function render(){
+  if(S.screen==="mode")renderMode();
+  else if(S.screen==="online")renderOnline();
+  else if(S.screen==="searching")renderSearching();
+  else if(S.screen==="lobby")renderLobby();
+  else if(S.screen==="game")renderGame();
+}
+
+function renderMode(){
+  const diffs=[{id:"easy",l:"Easy",e:"😊",d:"AI plays randomly",c:"#4CAF50"},{id:"medium",l:"Medium",e:"🧠",d:"AI thinks ahead",c:"#FF9800"},{id:"hard",l:"Hard",e:"🔥",d:"AI plays optimally",c:"#f44336"}];
+  let h=`<div class="screen" style="padding-top:20px">
+    <div class="title">ஆடு புலி ஆட்டம்</div>
+    <div class="subtitle">AADU PULI AATTAM</div>
+    <a href="/" style="color:#4ade80;font-size:11px;text-decoration:none;margin-bottom:4px">← J4F Home</a>
+    <p style="font-size:13px;margin:4px 0">🐅 Tigers vs 🐐 Goats</p>
+    <div class="card" onclick="resetState();S.gameMode='pvp';S.board=initBoard();S.screen='game';render();startTimer()">
+      <div style="font-size:32px">👥</div>
+      <div style="flex:1"><div style="color:#4ade80;font-weight:700;font-size:15px">Local 2 Player</div><div style="color:#6b9b85;font-size:11px">P1 = Tigers, P2 = Goats · ⏱️ ${TURN_TIME}s turns</div></div>
+    </div>
+    <div class="card" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.onlineErr='';S.joinCode='';S.screen='online';render()">
+      <div style="font-size:32px">🌐</div>
+      <div style="flex:1"><div style="color:#5bc0de;font-weight:700;font-size:15px">Online Multiplayer</div><div style="color:#7ab8d4;font-size:11px">Play with a friend remotely</div></div>
+    </div>
+    <p style="font-size:13px;font-weight:600;margin:8px 0 0">🤖 Play vs AI (You = Tigers)</p>`;
+  diffs.forEach(d=>{
+    h+=`<div class="card" onclick="resetState();S.gameMode='ai';S.aiDiff='${d.id}';S.board=initBoard();S.screen='game';render();startTimer()">
+      <div style="font-size:26px">${d.e}</div>
+      <div style="flex:1"><div style="color:${d.c};font-weight:700;font-size:14px">${d.l}</div><div style="color:#6b9b85;font-size:11px">${d.d}</div></div>
+    </div>`;
+  });
+  h+=`</div>`;app.innerHTML=h;
+}
+
+function renderOnline(){
+  let h=`<div class="screen" style="padding-top:20px;justify-content:center">
+    <div class="title" style="font-size:24px">ஆடு புலி ஆட்டம்</div>
+    <p style="color:#5bc0de;font-size:15px;font-weight:600">🌐 Online Play</p>
+    <button class="card" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.screen='searching';searchOnline()">
+      <div style="font-size:28px">🔍</div><div style="flex:1"><div style="color:#5bc0de;font-weight:700">Search Online</div><div style="color:#7ab8d4;font-size:11px">Match with a player</div></div>
+    </button>
+    <button class="card" style="background:linear-gradient(145deg,#1a4a2a,#0f3018);border-color:#2a8c4a" onclick="createRoom()">
+      <div style="font-size:28px">👫</div><div style="flex:1"><div style="color:#4ade80;font-weight:700">Send to Friends</div><div style="color:#6bcb77;font-size:11px">Create a link to share</div></div>
+    </button>
+    <div style="color:#2a8c5a;font-size:11px;letter-spacing:2px;margin:4px">── HAVE A CODE? ──</div>
+    <div style="width:100%;background:rgba(0,0,0,.3);border:2px solid #2a8c5a;border-radius:14px;padding:14px;text-align:center;display:flex;align-items:center;gap:10px;justify-content:center">
+      <input class="join-input" type="text" maxlength="4" placeholder="ABCD" style="max-width:120px;padding:8px;font-size:20px" value="${S.joinCode}" oninput="S.joinCode=this.value.toUpperCase();S.onlineErr=''">
+      <button class="btn-primary" onclick="joinRoom()">Join</button>
+    </div>
+    ${S.onlineErr?`<div class="error-box">⚠️ ${S.onlineErr}</div>`:""}
+    <button class="btn" onclick="S.screen='mode';render()">← Back</button>
+  </div>`;app.innerHTML=h;
+}
+
+function renderSearching(){
+  let h=`<div class="screen" style="padding-top:40px;align-items:center">
+    <div class="title" style="font-size:24px">ஆடு புலி ஆட்டம்</div>
+    <div style="font-size:48px;margin:20px">🔍</div>
+    <p style="color:#5bc0de;font-size:16px;font-weight:700">Searching for opponent</p>
+    <div class="anim-pulse" style="color:#7ab8d4;font-size:14px">Looking for players<span style="display:inline-flex;gap:2px"><span style="animation:dotBlink 1.4s ease infinite">.</span><span style="animation:dotBlink 1.4s ease infinite .2s">.</span><span style="animation:dotBlink 1.4s ease infinite .4s">.</span></span></div>
+    <button class="btn" style="margin-top:20px" onclick="cancelSearch();S.screen='online';render()">Cancel</button>
+  </div>`;app.innerHTML=h;
+}
+
+function renderLobby(){
+  let h=`<div class="screen" style="padding-top:20px;align-items:center">
+    <div class="title" style="font-size:24px">ஆடு புலி ஆட்டம்</div>
+    <p style="color:#5bc0de;font-size:14px;font-weight:600">🌐 Room Created!</p>
+    <div class="room-code-display"><div style="color:#6b9b85;font-size:11px;letter-spacing:2px;margin-bottom:6px">ROOM CODE</div><div class="room-code-text">${S.roomCode}</div></div>
+    <div style="font-size:13px;margin:6px">Share this code with your friend</div>
+    <div class="anim-pulse" style="color:#5bc0de;font-size:14px">Waiting for opponent<span style="display:inline-flex;gap:2px"><span style="animation:dotBlink 1.4s ease infinite">.</span><span style="animation:dotBlink 1.4s ease infinite .2s">.</span><span style="animation:dotBlink 1.4s ease infinite .4s">.</span></span></div>
+    <div class="share-row" style="margin-top:12px">
+      <button class="btn-wa" style="flex:1;padding:10px;font-size:12px" onclick="shareWA('${S.roomCode}')">💬 WhatsApp</button>
+      <button class="btn-copy" style="flex:1;padding:10px;font-size:12px" onclick="shareCopy('${S.roomCode}')">📋 Copy${S.inviteMsg?" ✓":""}</button>
+    </div>
+    <button class="btn" style="margin-top:12px" onclick="leaveOnlineMatchToMode()">Cancel</button>
+  </div>`;app.innerHTML=h;
+}
+
+function renderGame(){
+  const isAI=S.gameMode==="ai",isOn=S.gameMode==="online";
+  const myTurn=isOn?S.cp===S.myPlayer:(isAI?S.cp===0:true);
+  const showTimer=!S.anim&&!S.gameOver&&!S.waitingReconnect&&myTurn&&!(isAI&&S.cp===1);
+  const tigerLabel=isOn?(S.myPlayer===0?"You":"Opponent"):isAI?"You":"P1 (Tiger)";
+  const goatLabel=isOn?(S.myPlayer===1?"You":"Opponent"):isAI?"AI":"P2 (Goat)";
+
+  let turnText="";
+  if(S.gameOver){
+    if(isOn)turnText=S.winner===S.myPlayer?"You Win! 🎉":"You Lost 😤";
+    else if(isAI)turnText=S.winner===0?"You Win! 🎉":"AI Wins 😤";
+    else turnText=S.winner===0?"Tigers Win! 🐅":"Goats Win! 🐐";
+  }else{
+    if(isOn)turnText=S.cp===S.myPlayer?"Your Turn":"Opponent's Turn";
+    else if(isAI)turnText=S.cp===0?"Your Turn (Tiger)":"AI's Turn (Goat)";
+    else turnText=S.cp===0?"Tiger's Turn 🐅":"Goat's Turn 🐐";
+  }
+
+  let timerHTML="";
+  if(showTimer){
+    const r=18,circ=2*Math.PI*r,off=circ*(1-S.timeLeft/TURN_TIME);
+    const col=S.timeLeft<=3?"#ff4444":S.timeLeft<=5?"#ff8c00":"#4ade80";
+    timerHTML=`<div class="timer-ring"><svg width="44" height="44"><circle cx="22" cy="22" r="${r}" fill="none" stroke="rgba(40,100,70,.3)" stroke-width="3.5"/><circle cx="22" cy="22" r="${r}" fill="none" stroke="${col}" stroke-width="3.5" stroke-dasharray="${circ}" stroke-dashoffset="${off}" stroke-linecap="round" style="transition:stroke-dashoffset .3s linear"/></svg><span class="timer-num" style="font-size:${S.timeLeft<=3?18:16}px;color:${col};${S.timeLeft<=3?"animation:timerPulse .5s ease infinite":""}">${S.timeLeft}</span></div>`;
+  }else if(S.aiThink){timerHTML=`<div style="color:#4ade80;font-size:12px" class="anim-pulse">🤖 Thinking...</div>`}
+  else if(isOn&&!myTurn&&!S.gameOver){timerHTML=`<div style="color:#5bc0de;font-size:11px" class="anim-pulse">⏳ Waiting...</div>`}
+  else if(S.gameOver){timerHTML=`<div style="font-size:22px">🏆</div>`}
+
+  // Build board SVG
+  let svgLines="";
+  EDGES.forEach(([a,b])=>{
+    svgLines+=`<line x1="${NODE_POS[a][0]}" y1="${NODE_POS[a][1]}" x2="${NODE_POS[b][0]}" y2="${NODE_POS[b][1]}" stroke="rgba(74,222,128,.2)" stroke-width="1.5"/>`;
+  });
+
+  // Get valid move targets for selected node
+  let validTargets=[];
+  if(S.selectedNode!==-1&&!S.gameOver){
+    if(S.cp===0){validTargets=getTigerMoves(S.selectedNode,S.board).map(m=>m.to)}
+    else{validTargets=getGoatMoves(S.selectedNode,S.board).map(m=>m.to)}
+  }
+  // Placeable nodes for goats
+  let placeTargets=[];
+  if(S.cp===1&&S.goatsPlaced<S.maxGoats&&!S.gameOver&&myTurn){
+    placeTargets=getGoatPlacements(S.board);
+  }
+
+  let nodesHTML="";
+  for(let i=0;i<15;i++){
+    const x=NODE_POS[i][0],y=NODE_POS[i][1];
+    let cls="node";
+    if(S.board[i]==="T")cls+=" tiger";
+    else if(S.board[i]==="G")cls+=" goat";
+    else cls+=" empty";
+    if(i===S.selectedNode)cls+=" selected";
+    if(validTargets.includes(i))cls+=" movable";
+    if(placeTargets.includes(i)&&S.board[i]===null)cls+=" selectable";
+    if(S.cp===0&&S.board[i]==="T"&&myTurn&&!S.gameOver&&S.selectedNode===-1)cls+=" selectable";
+    if(S.cp===1&&S.board[i]==="G"&&myTurn&&!S.gameOver&&S.goatsPlaced>=S.maxGoats&&S.selectedNode===-1)cls+=" selectable";
+
+    const emoji=S.board[i]==="T"?"🐅":S.board[i]==="G"?"🐐":"";
+    nodesHTML+=`<div class="${cls}" style="left:${x}px;top:${y}px" onclick="handleNodeClick(${i})">${emoji}</div>`;
+  }
+
+  let h=`
+  <div style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:380px;margin-bottom:4px">
+    <div>
+      <div class="title" style="font-size:20px;letter-spacing:2px">ஆடு புலி</div>
+      <div style="color:#6b9b85;font-size:9px;letter-spacing:1.5px">${isOn?"🌐 "+S.roomCode:isAI?"AI ("+S.aiDiff+")":"PvP"}</div>
+    </div>
+    ${timerHTML}
+  </div>
+  <div class="status-bar">
+    ${S.timedOut?'<span style="color:#ff8c00;font-size:11px;font-weight:700">⏱️ Time\'s up!</span>':""}
+    ${S.waitingReconnect?`<span style="color:#ff8c00;font-size:11px;font-weight:700">⚠️ Opponent disconnected · win in ${S.reconnectLeft}s</span>`:""}
+  </div>
+  <div class="score-bar">
+    <div class="score-badge ${S.cp===0&&!S.gameOver?"on":"off"}">🐅 ${tigerLabel}</div>
+    <div class="turn-text" style="${S.gameOver?"color:#4ade80;font-weight:700":""}">${turnText}</div>
+    <div class="score-badge ${S.cp===1&&!S.gameOver?"on":"off"}">🐐 ${goatLabel}</div>
+  </div>
+  <div class="info-box">
+    🐐 Placed: ${S.goatsPlaced}/${S.maxGoats} · Captured: ${S.goatsCaptured}/5
+    ${S.cp===1&&S.goatsPlaced<S.maxGoats?" · <strong>Tap to place goat</strong>":""}
+    ${S.selectedNode!==-1?" · <strong>Tap destination</strong>":""}
+  </div>
+  <div class="board-container">
+    <svg width="320" height="340" style="position:absolute;top:0;left:0">${svgLines}</svg>
+    ${nodesHTML}
+  </div>
+  <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center">
+    ${S.gameOver?`<button class="btn-primary" onclick="${isOn?"leaveOnlineMatchToMode()":"resetState();S.gameMode='"+S.gameMode+"';S.aiDiff='"+S.aiDiff+"';S.board=initBoard();S.screen='game';render();startTimer()"}">New Game</button>`:""}
+    <button class="btn" onclick="S.showRules=!S.showRules;render()">${S.showRules?"Hide":"Rules"}</button>
+    ${!isOn?`<button class="btn" onclick="resetState();S.screen='mode';render()">Mode</button>`:`<button class="btn" onclick="S.leavePrompt=true;render()">Leave</button>`}
+    ${!S.gameOver&&!isOn?`<button class="btn" onclick="resetState();S.gameMode='${S.gameMode}';S.aiDiff='${S.aiDiff}';S.board=initBoard();S.screen='game';render();startTimer()">Restart</button>`:""}
+  </div>
+  ${S.leavePrompt&&isOn?`<div class="rules-box" style="border-color:#ff8c00">
+    <p style="font-weight:700;color:#ffb347;margin-bottom:6px">Leave this match?</p>
+    <p style="margin-bottom:8px">Your opponent can win by forfeit.</p>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button class="btn" onclick="S.leavePrompt=false;render()">Cancel</button>
+      <button class="btn" style="border-color:#ff8c00;color:#ffb347" onclick="leaveOnlineMatchToMode()">Confirm</button>
+    </div>
+  </div>`:""}
+  ${S.showRules?`<div class="rules-box">
+    <p style="font-weight:700;color:#4ade80;margin-bottom:6px">How to Play</p>
+    <p style="margin-bottom:5px">🐅 3 Tigers vs 🐐 15 Goats on a triangle board.</p>
+    <p style="margin-bottom:5px">Tigers move first. Goats are placed one at a time.</p>
+    <p style="margin-bottom:5px">Tigers capture goats by jumping over them (like checkers).</p>
+    <p style="margin-bottom:5px">🐅 Tigers win: Capture 5 goats.</p>
+    <p>🐐 Goats win: Block all tigers so they can't move.</p>
+  </div>`:""}`;
+  app.innerHTML=h;
+}
+
+/* ═══ INIT ═══ */
+(function(){
+  S.board=initBoard();
+  const params=new URLSearchParams(window.location.search);
+  const roomCode=params.get("room");
+  if(roomCode&&roomCode.length===4){
+    S.joinCode=roomCode.toUpperCase();S.screen="online";render();
+    setTimeout(()=>joinRoom(roomCode),500);
+    window.history.replaceState({},"",window.location.pathname);return;
+  }
+  render();
+})();
+</script>
+</body>
+</html>

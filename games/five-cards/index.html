@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0a1a3a">
+<title>5 Cards — J4F</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(180deg,#0a1a3a,#050d1f);color:#b0c0e0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#app{height:100dvh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;align-items:center;padding:12px 10px 100px}
+.title{color:#4d96ff;font-size:26px;font-weight:700;letter-spacing:2px;text-shadow:0 2px 8px rgba(77,150,255,.3)}
+.subtitle{color:#607090;font-size:12px;letter-spacing:2px}
+.btn{padding:8px 14px;background:rgba(10,20,50,.6);color:#b0c0e0;border:1px solid #4672c8;border-radius:10px;font:600 11px -apple-system,sans-serif;cursor:pointer}
+.btn-primary{padding:9px 18px;background:linear-gradient(135deg,#4672c8,#1a3a6b);color:#fff;border:none;border-radius:10px;font:700 13px -apple-system,sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(70,114,200,.4)}
+.card-ui{background:linear-gradient(145deg,#1a2a50,#0f1830);border:2px solid #4672c8;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;width:100%}
+.error-box{color:#ff6b6b;font-size:12px;font-weight:600;background:rgba(255,50,50,.15);padding:8px 14px;border-radius:8px;border:1px solid rgba(255,50,50,.3);text-align:center;width:100%}
+.screen{width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.btn-wa{padding:12px 20px;background:linear-gradient(135deg,#1a5c2e,#0f3d1e);color:#4ade80;border:2px solid #2a8c4a;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.btn-copy{padding:12px 20px;background:linear-gradient(135deg,#2a1a4a,#1a0e30);color:#b39ddb;border:2px solid #6b45a0;border-radius:12px;font:700 14px -apple-system,sans-serif;cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center;width:100%}
+.join-input{width:100%;max-width:160px;padding:12px;font:800 24px -apple-system,sans-serif;text-align:center;letter-spacing:8px;background:rgba(0,0,0,.3);color:#4d96ff;border:2px solid #4672c8;border-radius:10px;outline:none;text-transform:uppercase}
+.room-code-display{background:rgba(0,0,0,.4);border:3px solid #4d96ff;border-radius:16px;padding:24px 36px;text-align:center}
+.room-code-text{color:#4d96ff;font-size:48px;font-weight:800;letter-spacing:12px}
+.share-row{display:flex;gap:8px;width:100%;max-width:320px}
+.info-box{background:rgba(0,0,0,.3);border:1px solid #4672c8;border-radius:10px;padding:8px 14px;font-size:12px;text-align:center;width:100%}
+.rules-box{margin-top:10px;background:rgba(5,10,25,.9);border:1px solid #4672c8;border-radius:12px;padding:12px 14px;max-width:380px;width:100%;font-size:12px;line-height:1.5}
+.score-bar{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:380px;margin-bottom:6px}
+.score-badge{padding:5px 10px;border-radius:8px;font:700 12px -apple-system,sans-serif;border:2px solid transparent;transition:all .3s}
+.score-badge.on{background:linear-gradient(135deg,#4672c8,#1a3a6b);color:#fff;border-color:#4d96ff}
+.score-badge.off{background:rgba(10,20,50,.6);color:#b0c0e0}
+
+.playing-card{width:56px;height:80px;border-radius:8px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;cursor:pointer;transition:all .2s;border:3px solid #ddd;flex-shrink:0;position:relative}
+.playing-card.red{color:#cc0000}.playing-card.black{color:#333}
+.playing-card.facedown{background:linear-gradient(145deg,#1a3a6b,#0a1a3a);color:transparent;border-color:#4672c8}
+.playing-card.selected{border-color:#ff4444;box-shadow:0 0 12px rgba(255,68,68,.5);transform:translateY(-8px)}
+.playing-card.winner{border-color:#4ade80;box-shadow:0 0 12px rgba(74,222,128,.5)}
+.playing-card .card-rank{font-size:16px;line-height:1}.playing-card .card-suit{font-size:18px;line-height:1}
+.hand-row{display:flex;gap:6px;justify-content:center;margin:8px 0}
+.hand-label{font-size:16px;font-weight:700;text-align:center;margin:4px 0;padding:4px 12px;border-radius:8px}
+.result-box{background:rgba(0,0,0,.4);border:2px solid #ffd93d;border-radius:14px;padding:16px;text-align:center;width:100%;max-width:350px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes dotBlink{0%,20%{opacity:0}50%{opacity:1}100%{opacity:0}}
+.anim-pulse{animation:pulse 1.5s ease infinite}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="/js/firebase-config.js"></script>
+<script src="/js/j4f-sdk.js"></script>
+<script>
+/*
+  5 Cards — Simple draw poker
+  - 2 players get 5 cards each
+  - Each can swap up to 3 cards once
+  - Best hand wins
+*/
+const GAME_ID="five-cards";
+const SUITS=["♠","♥","♦","♣"];
+const RANKS=["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
+const RANK_VAL={};RANKS.forEach((r,i)=>RANK_VAL[r]=i+2);
+const SUIT_COLORS={"♠":"black","♥":"red","♦":"red","♣":"black"};
+
+function makeDeck(){const d=[];SUITS.forEach(s=>RANKS.forEach(r=>d.push({r,s})));return d}
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
+
+const HAND_RANKS=["High Card","One Pair","Two Pair","Three of a Kind","Straight","Flush","Full House","Four of a Kind","Straight Flush","Royal Flush"];
+
+function evalHand(cards){
+  const vals=cards.map(c=>RANK_VAL[c.r]).sort((a,b)=>a-b);
+  const suits=cards.map(c=>c.s);
+  const counts={};vals.forEach(v=>{counts[v]=(counts[v]||0)+1});
+  const groups=Object.values(counts).sort((a,b)=>b-a);
+  const isFlush=suits.every(s=>s===suits[0]);
+  const isStraight=vals[4]-vals[0]===4&&new Set(vals).size===5||(vals.join(",")=="2,3,4,5,14"); // A-2-3-4-5
+  const highCard=isStraight&&vals.join(",")=="2,3,4,5,14"?5:vals[4];
+
+  let rank=0,tiebreaker=highCard;
+  if(isStraight&&isFlush){rank=vals[4]===14&&vals[3]===13?9:8}
+  else if(groups[0]===4){rank=7;tiebreaker=+Object.keys(counts).find(k=>counts[k]===4)}
+  else if(groups[0]===3&&groups[1]===2){rank=6;tiebreaker=+Object.keys(counts).find(k=>counts[k]===3)}
+  else if(isFlush)rank=5;
+  else if(isStraight)rank=4;
+  else if(groups[0]===3){rank=3;tiebreaker=+Object.keys(counts).find(k=>counts[k]===3)}
+  else if(groups[0]===2&&groups[1]===2){rank=2;const pairs=Object.keys(counts).filter(k=>counts[k]===2).map(Number);tiebreaker=Math.max(...pairs)}
+  else if(groups[0]===2){rank=1;tiebreaker=+Object.keys(counts).find(k=>counts[k]===2)}
+
+  return{rank,tiebreaker,name:HAND_RANKS[rank]};
+}
+
+function compareHands(h1,h2){
+  const e1=evalHand(h1),e2=evalHand(h2);
+  if(e1.rank!==e2.rank)return e1.rank>e2.rank?0:1;
+  if(e1.tiebreaker!==e2.tiebreaker)return e1.tiebreaker>e2.tiebreaker?0:1;
+  return-1; // tie
+}
+
+function initGame(){
+  const deck=shuffle(makeDeck());
+  const hands=[[],[],[]]; // extra for draw pile
+  for(let i=0;i<5;i++){hands[0].push(deck.pop());hands[1].push(deck.pop())}
+  return{hands,drawPile:deck,selected:[[],[]], swapped:[false,false], phase:"swap", cp:0, gameOver:false, winner:null, handNames:["",""]};
+}
+
+const S={screen:"mode",gameMode:null,...initGame(),
+  roomCode:"",joinCode:"",myPlayer:0,isOnline:false,opJoined:false,onlineErr:"",
+  leavePrompt:false,isLeaving:false,showRules:false,inviteMsg:"",searching:false,searchMsg:"",
+  scores:[0,0],round:0,
+};
+let seenMoveId=0,cancelMatchmake=null;
+
+function resetState(){
+  if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}
+  const g=initGame();Object.assign(S,g,{scores:[0,0],round:0,
+    gameMode:null,isOnline:false,opJoined:false,roomCode:"",joinCode:"",onlineErr:"",
+    leavePrompt:false,isLeaving:false,showRules:false,inviteMsg:"",searching:false,searchMsg:""});
+  seenMoveId=0;
+}
+
+function toggleSelect(player,idx){
+  if(S.phase!=="swap"||S.swapped[player])return;
+  if(S.gameMode==="ai"&&player===1)return;
+  if(S.isOnline&&player!==S.myPlayer)return;
+  const sel=S.selected[player];
+  const i=sel.indexOf(idx);
+  if(i>=0)sel.splice(i,1);
+  else if(sel.length<3)sel.push(idx);
+  render();
+}
+
+function confirmSwap(player){
+  if(S.swapped[player])return;
+  const sel=S.selected[player];
+  // Replace selected cards from draw pile
+  sel.sort((a,b)=>b-a).forEach(idx=>{
+    if(S.drawPile.length>0)S.hands[player][idx]=S.drawPile.pop();
+  });
+  S.selected[player]=[];
+  S.swapped[player]=true;
+
+  if(S.isOnline){
+    J4F.room.sendMoveAndState({action:"swap",player},{hands:S.hands,drawPile:S.drawPile,swapped:S.swapped,phase:S.phase}).catch(()=>{});
+  }
+
+  // AI swap
+  if(S.gameMode==="ai"&&!S.swapped[1]){
+    setTimeout(()=>{
+      // AI: swap worst cards (simple strategy)
+      const hand=S.hands[1];
+      const ev=evalHand(hand);
+      if(ev.rank<=1){
+        // Swap non-pair cards
+        const counts={};hand.forEach((c,i)=>{const v=RANK_VAL[c.r];counts[v]=(counts[v]||0)+1});
+        const toSwap=[];
+        hand.forEach((c,i)=>{if(counts[RANK_VAL[c.r]]===1&&toSwap.length<3)toSwap.push(i)});
+        toSwap.forEach(idx=>{if(S.drawPile.length>0)S.hands[1][idx]=S.drawPile.pop()});
+      }
+      S.swapped[1]=true;
+      checkShowdown();
+      render();
+    },800);
+  }else{
+    checkShowdown();
+  }
+  render();
+}
+
+function checkShowdown(){
+  if(!S.swapped[0]||!S.swapped[1])return;
+  S.phase="showdown";
+  const w=compareHands(S.hands[0],S.hands[1]);
+  S.winner=w;S.gameOver=true;
+  S.handNames=[evalHand(S.hands[0]).name,evalHand(S.hands[1]).name];
+  if(w===0)S.scores[0]++;else if(w===1)S.scores[1]++;
+  S.round++;
+
+  if(S.isOnline){
+    const r=S.winner===S.myPlayer?"win":S.winner===-1?"draw":"loss";
+    J4F.leaderboard.submit(GAME_ID,r).catch(()=>{});
+    J4F.room.finish(S.winner).catch(()=>{});
+  }else if(S.gameMode==="ai"){
+    J4F.leaderboard.submit(GAME_ID,S.winner===0?"win":S.winner===-1?"draw":"loss").catch(()=>{});
+  }
+  render();
+}
+
+function newRound(){
+  const g=initGame();Object.assign(S,g);render();
+}
+
+/* ═══ ONLINE ═══ */
+async function createRoom(){
+  S.onlineErr="";
+  try{const g=initGame();Object.assign(S,g);
+    const{code}=await J4F.room.create(GAME_ID,{hands:S.hands,drawPile:S.drawPile,swapped:[false,false],phase:"swap",gameOver:false,winner:null});
+    S.roomCode=code;S.myPlayer=0;S.isOnline=true;S.opJoined=false;S.gameMode="online";seenMoveId=0;S.screen="lobby";render();setupHostListener();
+  }catch(e){S.onlineErr="Failed: "+(e.message||e);render()}
+}
+async function joinRoom(codeOverride){
+  S.onlineErr="";const code=(codeOverride||S.joinCode).toUpperCase().trim();
+  if(code.length!==4){S.onlineErr="Enter a 4-letter code";render();return}
+  try{const{roomData}=await J4F.room.join(code);
+    S.roomCode=code;S.myPlayer=1;S.isOnline=true;S.opJoined=true;
+    const st=roomData.state||{};if(st.hands)S.hands=st.hands;if(st.drawPile)S.drawPile=st.drawPile;
+    S.swapped=st.swapped||[false,false];S.phase="swap";S.gameOver=false;seenMoveId=0;
+    S.gameMode="online";S.screen="game";render();setupGuestListener();
+  }catch(e){S.onlineErr=e.message||"Failed";render()}
+}
+function searchOnline(){
+  S.searching=true;S.onlineErr="";render();const g=initGame();Object.assign(S,g);
+  cancelMatchmake=J4F.room.matchmake(GAME_ID,{hands:S.hands,drawPile:S.drawPile,swapped:[false,false],phase:"swap",gameOver:false,winner:null},
+    (code,player,roomData)=>{cancelMatchmake=null;S.searching=false;S.roomCode=code;S.myPlayer=player;S.isOnline=true;S.gameMode="online";seenMoveId=0;
+      if(player===0){S.opJoined=false;S.screen="lobby";render();setupHostListener()}
+      else{S.opJoined=true;const st=roomData?.state||{};if(st.hands)S.hands=st.hands;if(st.drawPile)S.drawPile=st.drawPile;S.swapped=st.swapped||[false,false];S.phase="swap";S.screen="game";render();setupGuestListener()}
+    },(msg)=>{cancelMatchmake=null;S.searching=false;S.onlineErr=msg;S.screen="online";render()});
+}
+function cancelSearch(){if(cancelMatchmake){cancelMatchmake();cancelMatchmake=null}S.searching=false;render()}
+function setupHostListener(){
+  J4F.room.onUpdate(data=>{if(S.isLeaving)return;
+    if(!S.opJoined&&data.guest&&data.status==="playing"){S.opJoined=true;S.screen="game";render();return}
+    if(data.moveId>seenMoveId&&data.state){seenMoveId=data.moveId;S.hands=data.state.hands;S.drawPile=data.state.drawPile;S.swapped=data.state.swapped;checkShowdown();render()}
+  });
+}
+function setupGuestListener(){
+  J4F.room.onUpdate(data=>{if(S.isLeaving)return;
+    if(data.moveId>seenMoveId&&data.state){seenMoveId=data.moveId;S.hands=data.state.hands;S.drawPile=data.state.drawPile;S.swapped=data.state.swapped;checkShowdown();render()}
+  });
+}
+async function leaveOnlineMatchToMode(){if(S.isLeaving)return;S.isLeaving=true;try{await J4F.room.leave()}catch(e){}resetState();S.screen="mode";S.isLeaving=false;render()}
+function shareWA(code){const base=window.location.origin+"/games/five-cards/";J4F.share.whatsapp(code?"🖐 Join my 5 Cards game!\nPlay: "+base+"?room="+code:"🖐 Let's play 5 Cards!\nPlay: "+base)}
+async function shareCopy(code){const base=window.location.origin+"/games/five-cards/";const ok=await J4F.share.copy("Join my 5 Cards game!\n"+base+(code?"?room="+code:""));S.inviteMsg=ok?"Copied!":"Failed";render();setTimeout(()=>{S.inviteMsg="";render()},2000)}
+
+/* ═══ RENDER ═══ */
+const app=document.getElementById("app");
+function render(){
+  if(S.screen==="mode")renderMode();
+  else if(S.screen==="online")renderOnline();
+  else if(S.screen==="searching")renderSearching();
+  else if(S.screen==="lobby")renderLobby();
+  else if(S.screen==="game")renderGame();
+}
+
+function renderMode(){
+  let h=`<div class="screen" style="padding-top:20px">
+    <div class="title">🖐 ஐந்து சீட்டு</div><div class="subtitle">5 CARDS</div>
+    <a href="/" style="color:#4d96ff;font-size:11px;text-decoration:none;margin-bottom:4px">← J4F Home</a>
+    <p style="font-size:13px;text-align:center">Draw poker! Get 5 cards, swap up to 3, best hand wins!</p>
+    <div class="card-ui" onclick="resetState();S.gameMode='pvp';S.screen='game';Object.assign(S,initGame());render()">
+      <div style="font-size:32px">👥</div><div style="flex:1"><div style="color:#4d96ff;font-weight:700;font-size:15px">Local 2 Player</div><div style="color:#607090;font-size:11px">Swap cards, compare hands</div></div>
+    </div>
+    <div class="card-ui" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.onlineErr='';S.joinCode='';S.screen='online';render()">
+      <div style="font-size:32px">🌐</div><div style="flex:1"><div style="color:#5bc0de;font-weight:700;font-size:15px">Online Multiplayer</div></div>
+    </div>
+    <div class="card-ui" onclick="resetState();S.gameMode='ai';Object.assign(S,initGame());S.screen='game';render()">
+      <div style="font-size:32px">🤖</div><div style="flex:1"><div style="color:#4CAF50;font-weight:700;font-size:15px">Play vs AI</div></div>
+    </div>
+  </div>`;app.innerHTML=h;
+}
+function renderOnline(){
+  let h=`<div class="screen" style="padding-top:20px;justify-content:center">
+    <div class="title" style="font-size:24px">🖐 5 Cards</div>
+    <button class="card-ui" style="background:linear-gradient(145deg,#1a3a5c,#0f2840);border-color:#2a6a9c" onclick="S.screen='searching';searchOnline()"><div style="font-size:28px">🔍</div><div style="flex:1"><div style="color:#5bc0de;font-weight:700">Search Online</div></div></button>
+    <button class="card-ui" style="background:linear-gradient(145deg,#1a4a2a,#0f3018);border-color:#2a8c4a" onclick="createRoom()"><div style="font-size:28px">👫</div><div style="flex:1"><div style="color:#4ade80;font-weight:700">Send to Friends</div></div></button>
+    <div style="color:#4672c8;font-size:11px;letter-spacing:2px;margin:4px">── HAVE A CODE? ──</div>
+    <div style="width:100%;background:rgba(0,0,0,.3);border:2px solid #4672c8;border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px;justify-content:center">
+      <input class="join-input" type="text" maxlength="4" placeholder="ABCD" style="max-width:120px;padding:8px;font-size:20px" value="${S.joinCode}" oninput="S.joinCode=this.value.toUpperCase()">
+      <button class="btn-primary" onclick="joinRoom()">Join</button>
+    </div>
+    ${S.onlineErr?`<div class="error-box">⚠️ ${S.onlineErr}</div>`:""}
+    <button class="btn" onclick="S.screen='mode';render()">← Back</button>
+  </div>`;app.innerHTML=h;
+}
+function renderSearching(){app.innerHTML=`<div class="screen" style="padding-top:40px;align-items:center"><div class="title" style="font-size:24px">🖐 5 Cards</div><div style="font-size:48px;margin:20px">🔍</div><p style="color:#5bc0de;font-weight:700">Searching...</p><div class="anim-pulse" style="color:#7ab8d4">Looking for players...</div><button class="btn" style="margin-top:20px" onclick="cancelSearch();S.screen='online';render()">Cancel</button></div>`}
+function renderLobby(){app.innerHTML=`<div class="screen" style="padding-top:20px;align-items:center"><div class="title" style="font-size:24px">🖐 5 Cards</div><div class="room-code-display"><div style="color:#607090;font-size:11px;margin-bottom:6px">ROOM CODE</div><div class="room-code-text">${S.roomCode}</div></div><div class="anim-pulse" style="color:#5bc0de;font-size:14px">Waiting for opponent...</div><div class="share-row" style="margin-top:12px"><button class="btn-wa" style="flex:1;padding:10px;font-size:12px" onclick="shareWA('${S.roomCode}')">💬 WhatsApp</button><button class="btn-copy" style="flex:1;padding:10px;font-size:12px" onclick="shareCopy('${S.roomCode}')">📋 Copy${S.inviteMsg?" ✓":""}</button></div><button class="btn" style="margin-top:12px" onclick="leaveOnlineMatchToMode()">Cancel</button></div>`}
+
+function renderGame(){
+  const isAI=S.gameMode==="ai",isOn=S.gameMode==="online";
+  const p0Label=isOn?(S.myPlayer===0?"You":"Opponent"):isAI?"You":"P1";
+  const p1Label=isOn?(S.myPlayer===1?"You":"Opponent"):isAI?"AI":"P2";
+  const myIdx=isOn?S.myPlayer:0;
+  const oppIdx=isOn?1-S.myPlayer:1;
+
+  function handHTML(player,label,showCards){
+    let h=`<div style="text-align:center;margin:4px 0"><div class="hand-label" style="color:${player===0?"#4d96ff":"#ff6b6b"}">${label} ${S.swapped[player]?"✅":"📝"}</div><div class="hand-row">`;
+    S.hands[player].forEach((c,i)=>{
+      const color=SUIT_COLORS[c.s];
+      const isSel=S.selected[player].includes(i);
+      const canSelect=S.phase==="swap"&&!S.swapped[player]&&showCards;
+      if(showCards||S.phase==="showdown"){
+        h+=`<div class="playing-card ${color}${isSel?" selected":""}${S.gameOver&&S.winner===player?" winner":""}" ${canSelect?`onclick="toggleSelect(${player},${i})"`:""}>
+          <span class="card-rank">${c.r}</span><span class="card-suit">${c.s}</span></div>`;
+      }else{
+        h+=`<div class="playing-card facedown"><span style="font-size:14px;color:#4672c8">🂠</span></div>`;
+      }
+    });
+    h+=`</div>`;
+    if(S.phase==="swap"&&!S.swapped[player]&&showCards){
+      h+=`<div style="margin-top:4px"><button class="btn-primary" onclick="confirmSwap(${player})">${S.selected[player].length>0?"Swap "+S.selected[player].length+" card"+(S.selected[player].length>1?"s":""):"Keep all"}</button></div>`;
+    }
+    if(S.phase==="showdown")h+=`<div style="font-size:12px;font-weight:700;color:#ffd93d;margin-top:2px">${S.handNames[player]}</div>`;
+    h+=`</div>`;
+    return h;
+  }
+
+  const showMyCards=true;
+  const showOppCards=S.phase==="showdown"||(S.gameMode==="pvp"&&!isOn);
+
+  let h=`
+  <div style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:380px;margin-bottom:4px">
+    <div><div class="title" style="font-size:20px">🖐 5 Cards</div><div style="color:#607090;font-size:9px">${isOn?"🌐 "+S.roomCode:isAI?"vs AI":"PvP"}</div></div>
+    <div class="score-badge on">Wins: ${S.scores[0]}-${S.scores[1]}</div>
+  </div>
+  <div class="info-box">${S.phase==="swap"?"Select up to 3 cards to swap, then confirm.":S.gameOver?(S.winner===-1?"It's a Tie!":((S.winner===myIdx?p0Label:p1Label)+" wins with "+S.handNames[S.winner]+"!")):"Revealing..."}</div>
+  ${handHTML(oppIdx,p1Label,showOppCards)}
+  <div style="font-size:11px;color:#607090;margin:4px">── vs ──</div>
+  ${handHTML(myIdx,p0Label,showMyCards)}
+  <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center">
+    ${S.gameOver?`<button class="btn-primary" onclick="${isOn?"leaveOnlineMatchToMode()":"newRound()"}">New Round</button>`:""}
+    <button class="btn" onclick="S.showRules=!S.showRules;render()">${S.showRules?"Hide":"Rules"}</button>
+    ${!isOn?`<button class="btn" onclick="resetState();S.screen='mode';render()">Mode</button>`:`<button class="btn" onclick="leaveOnlineMatchToMode()">Leave</button>`}
+  </div>
+  ${S.showRules?`<div class="rules-box">
+    <p style="font-weight:700;color:#4d96ff;margin-bottom:6px">How to Play 5 Cards</p>
+    <p style="margin-bottom:5px">Each player gets 5 cards from a shuffled deck.</p>
+    <p style="margin-bottom:5px">Select up to 3 cards to swap for new ones from the deck.</p>
+    <p style="margin-bottom:5px">Hand rankings: Royal Flush > Straight Flush > Four of a Kind > Full House > Flush > Straight > Three of a Kind > Two Pair > One Pair > High Card</p>
+    <p>Best hand wins! 🏆</p>
+  </div>`:""}`;
+  app.innerHTML=h;
+}
+
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  const roomCode=params.get("room");
+  if(roomCode&&roomCode.length===4){S.joinCode=roomCode.toUpperCase();S.screen="online";render();setTimeout(()=>joinRoom(roomCode),500);window.history.replaceState({},"",window.location.pathname);return}
+  render();
+})();
+</script>
+</body>
+</html>
